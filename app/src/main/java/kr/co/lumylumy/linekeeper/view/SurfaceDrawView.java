@@ -16,6 +16,7 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import kr.co.lumylumy.linekeeper.log.LogSystem;
 import kr.co.lumylumy.linekeeper.tools.Tools;
 
 import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
@@ -41,7 +42,8 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
 
     TouchEvent touchEventClass;
     public interface TouchEvent{
-        boolean touchEvent(MotionEvent input);
+        int CANCEL = 0, DOWN = 1, MOVE = 2, UP = 3;
+        boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent);
     }
 
     public SurfaceDrawView(Context context){
@@ -132,11 +134,39 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (touchEventClass != null){
-            return touchEventClass.touchEvent(event);
+            boolean returnValue;
+            int action, id, index, indexMax;
+            float x, y;
+            action = event.getActionMasked();
+            switch(action){
+                case MotionEvent.ACTION_DOWN:
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    id = event.getPointerId(index = event.getActionIndex());
+                    x = (event.getX(index) - marginX) * ratio; y = (event.getY(index) - marginY) * ratio;
+                    return touchEventClass.touchEvent(x, y, id, TouchEvent.DOWN, event);
+                case MotionEvent.ACTION_MOVE:
+                    returnValue = true;
+                    indexMax = event.getPointerCount();
+                    for (index = 0; index < indexMax; index++){
+                        id = event.getPointerId(index);
+                        x = (event.getX(index) - marginX) * ratio; y = (event.getY(index) - marginY) * ratio;
+                        if (!touchEventClass.touchEvent(x, y, id, TouchEvent.MOVE, event)) returnValue = false;
+                    }
+                    return returnValue;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_POINTER_UP:
+                    id = event.getPointerId(index = event.getActionIndex());
+                    x = (event.getX(index) - marginX) * ratio; y = (event.getY(index) - marginY) * ratio;
+                    return touchEventClass.touchEvent(x, y, id, TouchEvent.UP, event);
+                case MotionEvent.ACTION_CANCEL:
+                case MotionEvent.ACTION_OUTSIDE:
+                    return touchEventClass.touchEvent(0, 0, 0, TouchEvent.CANCEL, event);
+            }
         }
         else {
             return super.onTouchEvent(event);
         }
+        return false;
     }
 
     @Override

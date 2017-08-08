@@ -29,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
             Tools.tools_initial(this);
             SurfaceDrawView drawView = (SurfaceDrawView) findViewById(R.id.drawView);
             gameMain = new GameMain(this, drawView);
+            gameMain.activityResume();
         }
     }
     @Override

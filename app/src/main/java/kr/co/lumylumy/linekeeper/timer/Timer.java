@@ -60,6 +60,7 @@ public class Timer {
         }
         return false;
     }
+    public void deleteAll(){ timerNum = 0; }
     public void start(){
         long time= SystemClock.elapsedRealtime();
         for (int loop1 = 0; loop1 < timerNum; loop1++){ timeSave[loop1] = time; }
