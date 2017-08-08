@@ -113,12 +113,74 @@ public class Tools {
         }
         return bitmap;
     }
+    public static Bitmap trimBitmap(Bitmap bitmap){
+        int x1, y1, x2, y2, w = bitmap.getWidth(), h = bitmap.getHeight();
+        boolean flag;
+        x1=0;x2=0;y2=0;y1=0;
+        for (flag = false, x1 = 0; x1 < w; x1++){
+            for (int loop1 = 0; loop1 < h; loop1++){
+                if (bitmap.getPixel(x1, loop1) != 0){
+                    flag = true;
+                    break;
+                }
+            }
+            if (flag) break;
+        }
+        for (flag = false, x2 = w - 1; 0 <= x2; x2--){
+            for (int loop1 = 0; loop1 < h; loop1++){
+                if (bitmap.getPixel(x1, loop1) != 0){
+                    flag = true;
+                    break;
+                }
+            }
+            if (flag) break;
+        }
+        for (flag = false, y1 = 0; y1 < h; y1++){
+            for (int loop1 = 0; loop1 < w; loop1++){
+                if (bitmap.getPixel(loop1, y1) != 0){
+                    flag = true;
+                    break;
+                }
+            }
+            if (flag) break;
+        }
+        for (flag = false, y2 = h - 1; 0 <= y2; y2--){
+            for (int loop1 = 0; loop1 < w; loop1++){
+                if (bitmap.getPixel(loop1, y1) != 0){
+                    flag = true;
+                    break;
+                }
+            }
+            if (flag) break;
+        }
+        if (x1 <= x2 && y1 <= y2){
+            Bitmap returnBitmap = Bitmap.createBitmap(x2 - x1 + 1, y2 - y1 + 1, Bitmap.Config.ARGB_8888);
+            newCanvas(returnBitmap).drawBitmap(bitmap, new Rect(x1, y1, x2, y2), new Rect(0, 0, x2 - x1 + 1, y2 - y1 + 1), null);
+            return returnBitmap;
+        }
+        return null;
+    }
+    public static Bitmap textBitmap(String str, int width, int height_textSize, int baseColor, Paint textPaint){
+        textPaint.setTextAlign(Paint.Align.RIGHT);
+        textPaint.setTextSize(height_textSize);
+        Bitmap tBitmap = Bitmap.createBitmap(width, height_textSize, Bitmap.Config.ARGB_8888);
+        Canvas tCanvas = Tools.newCanvas(tBitmap);
+        tCanvas.drawText(str, width, height_textSize * 9 / 10, textPaint);
+        tBitmap = Tools.trimBitmap(tBitmap);
+        Tools.newCanvas(tBitmap).drawColor(baseColor, PorterDuff.Mode.DST_OVER);
+        return tBitmap;
+    }
     public static Canvas multiplyARGB(Canvas canvas, int multi){
         canvas.drawColor(multi << 24, PorterDuff.Mode.DST_IN);
         return canvas;
     }
     public static Canvas resetBitmap(Canvas canvas, int color){
         canvas.drawColor(color, PorterDuff.Mode.SRC);
+        return canvas;
+    }
+    public static Canvas newCanvas(Bitmap bitmap){
+        Canvas canvas = new Canvas();
+        canvas.setBitmap(bitmap);
         return canvas;
     }
 }

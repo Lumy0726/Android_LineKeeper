@@ -129,6 +129,7 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
             updateState = true;
         }
     }
+    public void viewUpdate(){ if (saveBitmap != null) updateState = true; }
     public void setFpsOutput(boolean input){ fpsOutput = input; }
     public void setTouchEventClass(TouchEvent input){ touchEventClass = input; }
     @Override

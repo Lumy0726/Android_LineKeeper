@@ -5,6 +5,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.KeyEvent;
 
+import kr.co.lumylumy.linekeeper.log.LogSystem;
 import kr.co.lumylumy.linekeeper.main.GameMain;
 import kr.co.lumylumy.linekeeper.tools.Tools;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
