@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
@@ -55,9 +56,25 @@ public class Tools {
                 time
         );
     }
+    //Path.
+    public static Path polyPath(float[] x, float[] y){
+        if (x.length == y.length){
+            Path path = new Path();
+            int num = x.length;
+            path.moveTo(x[0], y[0]);
+            for (int loop1 = 1; loop1 < num; loop1++){
+                path.lineTo(x[loop1], y[loop1]);
+            }
+            path.close();
+            return path;
+        }
+        return null;
+    }
     //Canvas, Bitmap, Paint, Rect.
-    public static Rect rectWH(int x, int y, int w, int h){
-        return new Rect(x, y, x + w, y + h);
+    public static Rect rectWH(int x, int y, int w, int h){ return new Rect(x, y, x + w, y + h); }
+    public static Paint aaPaint(Paint paint){
+        paint.setAntiAlias(true);
+        return paint;
     }
     public static Paint forcePaint(){
         Paint paint = new Paint();
@@ -160,14 +177,14 @@ public class Tools {
         }
         return null;
     }
-    public static Bitmap textBitmap(String str, int width, int height_textSize, int baseColor, Paint textPaint){
-        textPaint.setTextAlign(Paint.Align.RIGHT);
-        textPaint.setTextSize(height_textSize);
-        Bitmap tBitmap = Bitmap.createBitmap(width, height_textSize, Bitmap.Config.ARGB_8888);
+    public static Bitmap textBitmap(String str, int width, int height_TextSize, Paint textPaint){
+        Rect rect = new Rect();
+        textPaint.setTextAlign(Paint.Align.LEFT);
+        textPaint.setTextSize(height_TextSize);
+        textPaint.getTextBounds(str, 0, str.length(), rect);
+        Bitmap tBitmap = Bitmap.createBitmap(rect.width(), rect.height(), Bitmap.Config.ARGB_8888);
         Canvas tCanvas = Tools.newCanvas(tBitmap);
-        tCanvas.drawText(str, width, height_textSize * 9 / 10, textPaint);
-        tBitmap = Tools.trimBitmap(tBitmap);
-        Tools.newCanvas(tBitmap).drawColor(baseColor, PorterDuff.Mode.DST_OVER);
+        tCanvas.drawText(str, -rect.left, -rect.top, textPaint);
         return tBitmap;
     }
     public static Canvas multiplyARGB(Canvas canvas, int multi){
