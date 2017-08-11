@@ -70,6 +70,13 @@ public class Tools {
         }
         return null;
     }
+    //Math.
+    public static boolean dotIsRight(float x, float y, float lX1, float lY1, float lX2, float lY2){
+        float value = (lY2 - lY1) * (x - lX1) + (lX1 - lX2) * (y - lY1);
+        //The angle((lX2, lY2) -> (lX1, lY1) -> (x, y)) sin value's sign.
+        if (value > (float)0) return false;
+        return true;
+    }
     //Canvas, Bitmap, Paint, Rect.
     public static Rect rectWH(int x, int y, int w, int h){ return new Rect(x, y, x + w, y + h); }
     public static Paint aaPaint(Paint paint){

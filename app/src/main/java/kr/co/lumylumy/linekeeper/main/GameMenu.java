@@ -20,117 +20,199 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
  * Created by LMJ on 2017-08-08.
  */
 
-public class GameMenu implements GameBase{
+public class GameMenu implements GameBase {
     //gameMain.
     GameMain gameMain;
     //classStart
     boolean menuStart;
 
     //Menu.
-    Rect r_Start;
-    Bitmap b_Start;
-    int b_StartW, b_StartH;
-    Rect r_Exit;
+    static final int MENU_NUM = 2;
+    static final int MENU_START = 0;
+    static final int MENU_EXIT = 1;
+    Menu[] menu_S = new Menu[MENU_NUM];
 
-    Bitmap b_Exit;
-    int b_ExitW, b_ExitH;
-    int exitTouchId;
-    boolean exitTouchFlag;
+    //
+    Bitmap background;
 
     //constructer
-    public GameMenu(GameMain gameMain){
+    public GameMenu(GameMain gameMain) {
         this.gameMain = gameMain;
         init();
     }
-    protected void init(){
+
+    protected void init() {
         int width = gameMain.dv_CanvasWidth;
         int height = gameMain.dv_CanvasHeight;
-        int width_8 = width / 8;
-        int height_8 = height / 8;
-        int marginHeight = height_8 / 4;
+        int menuWidth = width * 4 / 5;
+        int menuHeight = height / 10;
+        int marginHeight = menuHeight / 4;
 
-        Paint tPaint;
-        Bitmap tBitmap;
-        Canvas tCanvas;
-        Path tPath;
-        float[] tX = new float[6], tY = new float[6];
-
-        //Start menu.
-        tBitmap = Tools.textBitmap("시작하기", width, height_8, Tools.aaPaint(Tools.colorPaint(MyColor.BLUE)));
-        b_StartW = tBitmap.getWidth() + width_8 * 2; b_StartH = tBitmap.getHeight();
-        b_Start = Bitmap.createBitmap(b_StartW, b_StartH, Bitmap.Config.ARGB_8888);
-        tCanvas = Tools.newCanvas(b_Start);
-        tX[0] = width_8;                tY[0] = 0;
-        tX[1] = b_StartW - width_8;     tY[1] = 0;
-        tX[2] = b_StartW - 1;           tY[2] = b_StartH / 2;
-        tX[3] = b_StartW - width_8;     tY[3] = b_StartH - 1;
-        tX[4] = width_8;                tY[4] = b_StartH - 1;
-        tX[5] = 0;                      tY[5] = b_StartH / 2;
-        tPath = Tools.polyPath(tX, tY);
-        tPaint = new Paint();
-        tPaint.setStyle(Paint.Style.FILL);
-        tPaint.setShader(new LinearGradient(0, 0, 0, b_StartH - 1, 0xffddff00, 0xff6e7f00, Shader.TileMode.CLAMP));
-        tCanvas.drawPath(tPath, tPaint);
-        tCanvas.drawBitmap(tBitmap, width_8, 0, null);
-        r_Start = Tools.rectWH((width - b_StartW) / 2, height / 2 - b_StartH, b_StartW, b_StartH);
-        //Exit menu.
-        tBitmap = Tools.textBitmap("종료하기", width, height_8, Tools.aaPaint(Tools.colorPaint(MyColor.BLUE)));
-        b_ExitW = tBitmap.getWidth() + width_8 * 2; b_ExitH = tBitmap.getHeight();
-        b_Exit = Bitmap.createBitmap(b_ExitW, b_ExitH, Bitmap.Config.ARGB_8888);
-        tCanvas = Tools.newCanvas(b_Exit);
-        tX[0] = width_8;                tY[0] = 0;
-        tX[1] = b_ExitW - width_8;      tY[1] = 0;
-        tX[2] = b_ExitW - 1;            tY[2] = b_ExitH / 2;
-        tX[3] = b_ExitW - width_8;      tY[3] = b_ExitH - 1;
-        tX[4] = width_8;                tY[4] = b_ExitH - 1;
-        tX[5] = 0;                      tY[5] = b_ExitH / 2;
-        tPath = Tools.polyPath(tX, tY);
-        tPaint = new Paint();
-        tPaint.setStyle(Paint.Style.FILL);
-        tPaint.setShader(new LinearGradient(0, 0, 0, b_ExitH - 1, 0xffddff00, 0xff6e7f00, Shader.TileMode.CLAMP));
-        tCanvas.drawPath(tPath, tPaint);
-        tCanvas.drawBitmap(tBitmap, width_8, 0, null);
-        r_Exit = Tools.rectWH((width - b_ExitW) / 2, height / 2 + marginHeight, b_ExitW, b_ExitH);
+        //Menu.
+        int menuX = (width - menuWidth) / 2, menuY = (height - (menuHeight + marginHeight) * MENU_NUM) / 2;
+        menu_S[MENU_START] = new Menu("시작하기", menuWidth, menuHeight, menuWidth / 8);
+        menu_S[MENU_EXIT] = new Menu("종료하기", menuWidth, menuHeight, menuWidth / 8);
+        for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
+            menu_S[loop1].setPos(menuX, menuY);
+            menuY += (menuHeight + marginHeight);
+        }
+        //Background.
+        background = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            //Background - tileBitmap;
+        int tileSize = width / 20;
+        Paint paint = Tools.aaPaint(Tools.colorPaint(0xffeeeeee));
+        paint.setStyle(Paint.Style.FILL);
+        Path path = new Path();
+        {
+            float size = (float)tileSize, halfSize = tileSize / (float)2;
+            path.moveTo(halfSize, 0);
+            path.lineTo(size, halfSize);
+            path.lineTo(halfSize, size);
+            path.lineTo(0, halfSize);
+            path.close();
+        }
+        Bitmap tBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tBitmap);
+        canvas.drawPath(path, paint);
+            //Background - draw.
+        canvas.setBitmap(background);
+        canvas.drawColor(MyColor.WHITE);
+        for (int loop1 = 0, loop1End = width + tileSize; loop1 <loop1End; loop1 += tileSize){
+            for (int loop2 = 0, loop2End = height + tileSize; loop2 <loop2End; loop2 += tileSize){
+                canvas.drawBitmap(tBitmap, loop1, loop2, null);
+            }
+        }
         //
         menuStart = true;
     }
 
-    protected void exit(){
+    protected void exit() {
         gameMain.exit();
     }
+
     //Timer/Touch input.
     @Override
     public void onTimer(int id, int sendNum) {
-        if (menuStart){
+        if (menuStart) {
             Canvas dv_Canvas = gameMain.dv_Canvas;
-            dv_Canvas.drawColor(MyColor.WHITE);
-            dv_Canvas.drawBitmap(b_Start, null, r_Start, null);
-            dv_Canvas.drawBitmap(b_Exit, null, r_Exit, null);
+            dv_Canvas.drawBitmap(background, 0, 0, null);
+            for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
+                menu_S[loop1].draw(dv_Canvas);
+            }
             gameMain.drawView.update();
             menuStart = false;
         }
     }
+
     @Override
     public boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent) {
-        switch(action){
+        switch (action) {
             case SurfaceDrawView.TouchEvent.DOWN:
-                if (r_Exit.contains((int)x, (int)y)){
-                    exitTouchFlag = true;
-                    exitTouchId = id;
+                for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
+                    if (menu_S[loop1].inMenu(x, y)) {
+                        menu_S[loop1].touchId = id;
+                        menu_S[loop1].touchState = true;
+                        menu_S[loop1].draw(gameMain.dv_Canvas);
+                        gameMain.drawView.update();
+                        break;
+                    }
                 }
                 break;
             case SurfaceDrawView.TouchEvent.UP:
-                if (exitTouchFlag && exitTouchId == id){
-                    if (r_Exit.contains((int)x, (int)y)){
-                        exit();
+                for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
+                    if (menu_S[loop1].touchState && menu_S[loop1].touchId == id){
+                        menu_S[loop1].touchState = false;
+                        menu_S[loop1].draw(gameMain.dv_Canvas);
+                        gameMain.drawView.update();
+                        if (menu_S[loop1].inMenu(x, y)) {
+                            switch(loop1){
+                                case MENU_START:
+                                    Tools.simpleToast(gameMain.activity.getApplicationContext(), "시작버튼 클릭", 500);
+                                    break;
+                                case MENU_EXIT:
+                                    exit();
+                                    break;
+                            }
+                        }
+                        break;
                     }
-                    else exitTouchFlag = false;
                 }
                 break;
             case SurfaceDrawView.TouchEvent.CANCEL:
-                exitTouchFlag = false;
+                for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
+                    menu_S[loop1].touchState = false;
+                    menu_S[loop1].draw(gameMain.dv_Canvas);
+                }
+                gameMain.drawView.update();
                 break;
         }
         return true;
+    }
+}
+
+class Menu {
+    protected Rect rect;
+    protected Bitmap bitmap, bitmapTouch;
+    protected int width, height, edgeWidth;
+    protected int touchId;
+    protected boolean touchState = false;
+
+    protected Menu(String str, int width, int height, int edgeWidth) {
+        this(str, 0, 0, width, height, edgeWidth);
+    }
+
+    protected Menu(String str, int left, int top, int width, int height, int edgeWidth) {
+        bitmap = Bitmap.createBitmap(this.width = width, this.height = height, Bitmap.Config.ARGB_8888);
+        rect = Tools.rectWH(left, top, width, height);
+        Canvas canvas = Tools.newCanvas(bitmap);
+        Path path = new Path();
+        path.moveTo(edgeWidth, 0);
+        path.lineTo(width - edgeWidth, 0);
+        path.lineTo(width, height / (float) 2);
+        path.lineTo(width - edgeWidth, height);
+        path.lineTo(edgeWidth, height);
+        path.lineTo(0, height / (float) 2);
+        path.close();
+        Paint paint = new Paint();
+        paint.setStyle(Paint.Style.FILL);
+        paint.setShader(new LinearGradient(0, 0, 0, height, 0xffddff00, 0xff6e7f00, Shader.TileMode.CLAMP));
+        canvas.drawPath(path, paint);
+        Bitmap tBitmap = Tools.textBitmap(str, width, height, Tools.aaPaint(Tools.colorPaint(MyColor.BLUE)));
+        canvas.drawBitmap(tBitmap, (width - tBitmap.getWidth()) / (float) 2, (height - tBitmap.getHeight()) / (float) 2, null);
+        bitmapTouch = Bitmap.createBitmap(bitmap);
+        canvas.setBitmap(bitmapTouch);
+        canvas.drawColor(0x7f7f7f7f, PorterDuff.Mode.SRC_ATOP);
+        this.edgeWidth = edgeWidth;
+    }
+
+    protected void setPos(int x, int y) {
+        rect = Tools.rectWH(x, y, width, height);
+    }
+
+    protected boolean inMenu(float x, float y) {
+        float[] xValue = new float[]{rect.left, rect.left + edgeWidth, rect.right - edgeWidth, rect.right};
+        float[] yValue = new float[]{rect.top, rect.exactCenterY(), rect.bottom};
+        if (rect.top <= (int) y && (int) y < rect.bottom) {
+            if (rect.left <= (int) x && (int) x < rect.right) {
+                if (rect.left + edgeWidth <= (int) x && (int) x < rect.right - edgeWidth)
+                    return true;
+                if ((int) x < rect.left + edgeWidth) {
+                    if (Tools.dotIsRight(x, y, rect.left, rect.exactCenterY(), rect.left + edgeWidth, rect.top) &&
+                            Tools.dotIsRight(x, y, rect.left + edgeWidth, rect.bottom, rect.left, rect.exactCenterY())
+                            ) return true;
+                } else if (Tools.dotIsRight(x, y, rect.right - edgeWidth, rect.top, rect.right, rect.exactCenterY()) &&
+                        Tools.dotIsRight(x, y, rect.right, rect.exactCenterY(), rect.right - edgeWidth, rect.bottom)
+                        ) return true;
+            }
+        }
+        return false;
+    }
+
+    protected void draw(Canvas canvas) {
+        if (touchState) {
+            canvas.drawBitmap(bitmapTouch, null, rect, null);
+        } else {
+            canvas.drawBitmap(bitmap, null, rect, null);
+        }
     }
 }
