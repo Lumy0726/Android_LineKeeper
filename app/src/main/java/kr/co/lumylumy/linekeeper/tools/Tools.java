@@ -70,6 +70,16 @@ public class Tools {
         }
         return null;
     }
+    public static boolean smoothQuad(Path path, float x1, float y1, float x2, float y2, int dx1, int dy1, int dx2, int dy2){
+        int denominator = dx1 * dy2 - dx2 * dy1;
+        if (denominator != 0){
+            float x = (dx1 * dx2 * (y1 - y2) + dx1 * dy2 * x2 - dx2 * dy1 * x1) / denominator;
+            float y = (dy1 * dy2 * (x1 - x2) + dy1 * dx2 * y2 - dy2 * dx1 * y1) / -denominator;
+            path.lineTo(x1, y1);
+            path.quadTo(x, y, x2, y2);
+        }
+        return false;
+    }
     //Math.
     public static boolean dotIsRight(float x, float y, float lX1, float lY1, float lX2, float lY2){
         float value = (lY2 - lY1) * (x - lX1) + (lX1 - lX2) * (y - lY1);
