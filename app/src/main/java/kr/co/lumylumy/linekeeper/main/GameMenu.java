@@ -38,7 +38,7 @@ public class GameMenu implements GameBase {
         init();
     }
 
-    protected void init() {
+    void init() {
         int width = gameMain.dv_CanvasWidth;
         int height = gameMain.dv_CanvasHeight;
         int menuWidth = width * 4 / 5;
@@ -89,7 +89,7 @@ public class GameMenu implements GameBase {
         }
         gameMain.drawView.update();
     }
-    protected void exit() { gameMain.exit(); }
+    void exit() { gameMain.exit(); }
 
     //Timer/Touch input.
     @Override
@@ -143,17 +143,17 @@ public class GameMenu implements GameBase {
 }
 
 class Menu {
-    protected Rect rect;
-    protected Bitmap bitmap, bitmapTouch;
-    protected int width, height, edgeWidth;
-    protected int touchId;
-    protected boolean touchState = false;
+    Rect rect;
+    Bitmap bitmap, bitmapTouch;
+    int width, height, edgeWidth;
+    int touchId;
+    boolean touchState = false;
 
-    protected Menu(String str, int width, int height, int edgeWidth) {
+    Menu(String str, int width, int height, int edgeWidth) {
         this(str, 0, 0, width, height, edgeWidth);
     }
 
-    protected Menu(String str, int left, int top, int width, int height, int edgeWidth) {
+    Menu(String str, int left, int top, int width, int height, int edgeWidth) {
         bitmap = Bitmap.createBitmap(this.width = width, this.height = height, Bitmap.Config.ARGB_8888);
         rect = Tools.rectWH(left, top, width, height);
         Canvas canvas = Tools.newCanvas(bitmap);
@@ -177,9 +177,9 @@ class Menu {
         this.edgeWidth = edgeWidth;
     }
 
-    protected void setPos(int x, int y) { rect = Tools.rectWH(x, y, width, height); }
+    void setPos(int x, int y) { rect = Tools.rectWH(x, y, width, height); }
 
-    protected boolean inMenu(float x, float y) {
+    boolean inMenu(float x, float y) {
         if (rect.top <= (int) y && (int) y < rect.bottom) {
             if (rect.left <= (int) x && (int) x < rect.right) {
                 if (rect.left + edgeWidth <= (int) x && (int) x < rect.right - edgeWidth)
@@ -196,7 +196,7 @@ class Menu {
         return false;
     }
 
-    protected void draw(Canvas canvas) {
+    void draw(Canvas canvas) {
         if (touchState) {
             canvas.drawBitmap(bitmapTouch, null, rect, null);
         } else {

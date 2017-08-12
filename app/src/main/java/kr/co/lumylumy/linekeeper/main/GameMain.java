@@ -22,31 +22,31 @@ public class GameMain implements TimerAble, TouchEvent{
     //resolution.
     static final int WIDTH = 600, HEIGHT = 900;
     //activity
-    protected AppCompatActivity activity;
+    AppCompatActivity activity;
     //Timer.
     static final int TIMERID_MAIN = 0;
-    protected Timer timer;
+    Timer timer;
     //SurfaceDrawView.
-    protected SurfaceDrawView drawView;
-    protected Canvas dv_Canvas;
-    protected int dv_CanvasWidth, dv_CanvasHeight;
-    protected float dv_Ratio;
+    SurfaceDrawView drawView;
+    Canvas dv_Canvas;
+    int dv_CanvasWidth, dv_CanvasHeight;
+    float dv_Ratio;
     //Bitmap.
-    protected Bitmap bitmapMain;
+    Bitmap bitmapMain;
     //gameState.
     static final int GSTATE_MENU = 0, GSTATE_PLAY = 1, GSTATE_PAUSE = 2;
-    protected GameBase gameClass;
-    protected GameMenu gameMenu;
-    protected GamePlay gamePlay;
-    protected GamePause gamePause;
+    GameBase gameClass;
+    GameMenu gameMenu;
+    GamePlay gamePlay;
+    GamePause gamePause;
     //test value.
-    protected class Coord {
+    class Coord {
         int id;
         float x, y;
         Coord(int id){ this(id, 0, 0); }
         Coord(int id, float x, float y){ this.id = id; this.x = x; this.y = y; }
     }
-    protected ArrayList<Coord> circleCoord_S = new ArrayList<Coord>();
+    ArrayList<Coord> circleCoord_S = new ArrayList<Coord>();
 
     //constructer
     public GameMain(AppCompatActivity activity, SurfaceDrawView drawView){
@@ -55,7 +55,7 @@ public class GameMain implements TimerAble, TouchEvent{
     }
 
     //init, reset,exit
-    protected void init(){
+    void init(){
         //Timer.
         timer = new Timer(this);
         timer.add(TIMERID_MAIN, 16);
@@ -68,7 +68,7 @@ public class GameMain implements TimerAble, TouchEvent{
         //reset.
         reset();
     }
-    protected void reset(){
+    void reset(){
         //Clear drawView.
         Tools.resetBitmap(dv_Canvas, 0xffffffff);
         drawView.update();
@@ -79,7 +79,7 @@ public class GameMain implements TimerAble, TouchEvent{
         //gameState
         setGameState(GSTATE_MENU);
     }
-    protected void setGameState(int state){
+    void setGameState(int state){
         switch(state){
             case GSTATE_MENU:
                 (gameClass = gameMenu).onStart();
@@ -92,7 +92,7 @@ public class GameMain implements TimerAble, TouchEvent{
                 break;
         }
     }
-    protected void exit(){
+    void exit(){
         timer.stop();
         activity.finish();
     }
