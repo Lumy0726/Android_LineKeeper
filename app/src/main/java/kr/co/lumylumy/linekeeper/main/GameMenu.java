@@ -10,7 +10,6 @@ import android.graphics.Rect;
 import android.graphics.Shader;
 import android.view.MotionEvent;
 
-import kr.co.lumylumy.linekeeper.main.*;
 import kr.co.lumylumy.linekeeper.tools.Tools;
 import kr.co.lumylumy.linekeeper.tools.MyColor;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
@@ -23,8 +22,6 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
 public class GameMenu implements GameBase {
     //gameMain.
     GameMain gameMain;
-    //classStart
-    boolean menuStart;
 
     //Menu.
     static final int MENU_NUM = 2;
@@ -77,33 +74,28 @@ public class GameMenu implements GameBase {
             //Background - draw.
         canvas.setBitmap(background);
         canvas.drawColor(MyColor.WHITE);
-        for (int loop1 = 0, loop1End = width + tileSize; loop1 <loop1End; loop1 += tileSize){
-            for (int loop2 = 0, loop2End = height + tileSize; loop2 <loop2End; loop2 += tileSize){
+        for (int loop1 = 0; loop1 < width; loop1 += tileSize){
+            for (int loop2 = 0; loop2 < height; loop2 += tileSize){
                 canvas.drawBitmap(tBitmap, loop1, loop2, null);
             }
         }
-        //
-        menuStart = true;
     }
-
-    protected void exit() {
-        gameMain.exit();
+    @Override
+    public void onStart() {
+        Canvas dv_Canvas = gameMain.dv_Canvas;
+        dv_Canvas.drawBitmap(background, 0, 0, null);
+        for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
+            menu_S[loop1].draw(dv_Canvas);
+        }
+        gameMain.drawView.update();
     }
+    protected void exit() { gameMain.exit(); }
 
     //Timer/Touch input.
     @Override
     public void onTimer(int id, int sendNum) {
-        if (menuStart) {
-            Canvas dv_Canvas = gameMain.dv_Canvas;
-            dv_Canvas.drawBitmap(background, 0, 0, null);
-            for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
-                menu_S[loop1].draw(dv_Canvas);
-            }
-            gameMain.drawView.update();
-            menuStart = false;
-        }
+        //NONE.
     }
-
     @Override
     public boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent) {
         switch (action) {
@@ -127,7 +119,7 @@ public class GameMenu implements GameBase {
                         if (menu_S[loop1].inMenu(x, y)) {
                             switch(loop1){
                                 case MENU_START:
-                                    Tools.simpleToast(gameMain.activity.getApplicationContext(), "시작버튼 클릭", 500);
+                                    gameMain.setGameState(GameMain.GSTATE_PLAY);
                                     break;
                                 case MENU_EXIT:
                                     exit();
@@ -185,13 +177,9 @@ class Menu {
         this.edgeWidth = edgeWidth;
     }
 
-    protected void setPos(int x, int y) {
-        rect = Tools.rectWH(x, y, width, height);
-    }
+    protected void setPos(int x, int y) { rect = Tools.rectWH(x, y, width, height); }
 
     protected boolean inMenu(float x, float y) {
-        float[] xValue = new float[]{rect.left, rect.left + edgeWidth, rect.right - edgeWidth, rect.right};
-        float[] yValue = new float[]{rect.top, rect.exactCenterY(), rect.bottom};
         if (rect.top <= (int) y && (int) y < rect.bottom) {
             if (rect.left <= (int) x && (int) x < rect.right) {
                 if (rect.left + edgeWidth <= (int) x && (int) x < rect.right - edgeWidth)

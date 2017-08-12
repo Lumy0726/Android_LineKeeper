@@ -11,4 +11,5 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
  */
 
 public interface GameBase extends TimerAble, TouchEvent {
+    void onStart();
 }
