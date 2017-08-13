@@ -57,7 +57,7 @@ public class GameMenu implements GameBase {
         background = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             //Background - tileBitmap;
         int tileSize = width / 20;
-        Paint paint = Tools.aaPaint(Tools.colorPaint(0xffeeeeee));
+        Paint paint = Tools.aaPaint(Tools.colorPaint(MyColor.hsvColor(0, 0, 93)));
         paint.setStyle(Paint.Style.FILL);
         Path path = new Path();
         {
@@ -167,13 +167,13 @@ class Menu {
         path.close();
         Paint paint = new Paint();
         paint.setStyle(Paint.Style.FILL);
-        paint.setShader(new LinearGradient(0, 0, 0, height, 0xffddff00, 0xff6e7f00, Shader.TileMode.CLAMP));
+        paint.setShader(new LinearGradient(0, 0, 0, height, MyColor.hsvColor(68, 100, 100), MyColor.hsvColor(68, 80, 50), Shader.TileMode.CLAMP));
         canvas.drawPath(path, paint);
         Bitmap tBitmap = Tools.textBitmap(str, width, height, Tools.aaPaint(Tools.colorPaint(MyColor.BLUE)));
         canvas.drawBitmap(tBitmap, (width - tBitmap.getWidth()) / (float) 2, (height - tBitmap.getHeight()) / (float) 2, null);
         bitmapTouch = Bitmap.createBitmap(bitmap);
         canvas.setBitmap(bitmapTouch);
-        canvas.drawColor(0x7f7f7f7f, PorterDuff.Mode.SRC_ATOP);
+        canvas.drawColor(MyColor.aColor(0x7f, MyColor.hsvColor(0, 0, 50)), PorterDuff.Mode.SRC_ATOP);
         this.edgeWidth = edgeWidth;
     }
 

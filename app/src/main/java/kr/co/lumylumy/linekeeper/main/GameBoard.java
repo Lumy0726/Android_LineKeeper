@@ -23,71 +23,78 @@ public class GameBoard implements TimerAble{
     int xPos, yPos, width, height, tileSize;
     //tiles
     Tile[][] tile_S = new Tile[boardH][boardW];
-    //
-    Bitmap b_DownArrow;
+    //Gameboard Bitmap.
+    Bitmap b_Board;
+    Canvas c_Board;
+    static final int RECT_TOP1 = 0, RECT_TOP2 = 1, RECT_BOTTOM1 = 2, RECT_BOTTOM2 = 3, RECT_MIDDLE = 4;
+    Rect[] rect_S = new Rect[5];
 
     //constructor.
+    GameBoard(int width){
+        tileSize = width / boardW;
+        Tile.makeTileBitmap(tileSize);
+        this.width = tileSize * boardW;
+        this.height = tileSize * (boardH + 1);
+        xPos = 0; yPos = 0;
+        init();
+    }
+    GameBoard(int width, int height){
+        tileSize = width / boardW;
+        Tile.makeTileBitmap(tileSize);
+        this.width = tileSize * boardW;
+        this.height = tileSize * (boardH + 1);
+        xPos = 0; yPos = height - this.height;
+        init();
+    }
     GameBoard(int xPos, int yPos, int width){
         this.xPos = xPos; this.yPos = yPos;
-        tileSize = width / (boardW + 1);
+        tileSize = width / boardW;
         Tile.makeTileBitmap(tileSize);
-        this.width = tileSize * (boardW + 1);
+        this.width = tileSize * boardW;
         height = tileSize * (boardH + 1);
         init();
     }
+    void setPosition(int xPos, int yPos){ this.xPos = xPos; this.yPos = yPos; }
     void init(){
+        //BitmapBoard.
+        b_Board = Bitmap.createBitmap(width, height + tileSize, Bitmap.Config.ARGB_8888);
+        c_Board = Tools.newCanvas(b_Board);
+        rect_S[RECT_TOP1] = new Rect(0, 0, width, tileSize);
+        (rect_S[RECT_TOP2] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, tileSize);
+        (rect_S[RECT_BOTTOM1] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, height - tileSize);
+        (rect_S[RECT_BOTTOM2] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, height);
+        rect_S[RECT_MIDDLE] = new Rect(0, 0, width, height);
+        //Tile allocate.
         for (int x = 0; x < boardW; x++){
             for (int y = 0; y < boardH; y++){
-                tile_S[y][x] = new TileA(new Direction(Direction.U), xPos + x * tileSize + tileSize / 2, yPos + y * tileSize + tileSize / 2);
+                switch((int)(Math.random() * 4)){
+                    case 0: tile_S[y][x] = new TileA(new Direction(Direction.R), x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
+                        break;
+                    case 1: tile_S[y][x] = new TileA(new Direction(Direction.U), x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
+                        break;
+                    case 2: tile_S[y][x] = new TileA(new Direction(Direction.L), x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
+                        break;
+                    case 3: tile_S[y][x] = new TileA(new Direction(Direction.D), x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
+                        break;
+                }
             }
         }
-        //DownArrow Bitmap.
-        Paint paint = Tools.colorPaint(MyColor.RED);
-        Path path = new Path();
-        b_DownArrow = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
-        paint.setAntiAlias(true);
-        paint.setStyle(Paint.Style.FILL);
-        int arrowWidth = tileSize / 8;
-        int margin = tileSize / 6;
-            //path
-        path.moveTo(tileSize / (float)2, margin);
-        path.rQuadTo(arrowWidth / (float)2, 0, arrowWidth / (float)2, arrowWidth / (float)2);
-        path.lineTo((tileSize + arrowWidth) / (float)2, tileSize - margin - arrowWidth);
-        float dx = (tileSize - arrowWidth) / (float)2 - margin;
-        float dy = margin + arrowWidth - tileSize / (float)2;
-        path.rLineTo(dx, dy);
-        Tools.smoothQuad(path,
-                tileSize - margin, tileSize / (float)2,
-                (tileSize + arrowWidth) / (float)2, tileSize - margin,
-                0, -1, (int)dx, (int)dy
-                );
-        Tools.smoothQuad(path,
-                (tileSize + arrowWidth) / (float)2, tileSize - margin,
-                (tileSize - arrowWidth) / (float)2, tileSize - margin,
-                (int)dx, (int)dy, -(int)dx, (int)dy
-                );
-        Tools.smoothQuad(path,
-                (tileSize - arrowWidth) / (float)2, tileSize - margin,
-                margin, tileSize / (float)2,
-                -(int)dx, (int)dy, 0, -1
-        );
-        path.lineTo((tileSize - arrowWidth) / (float)2, tileSize - margin - arrowWidth);
-        path.lineTo((tileSize - arrowWidth) / (float)2, margin + arrowWidth / (float)2);
-        path.rQuadTo(0, -arrowWidth / (float)2, arrowWidth / (float)2, -arrowWidth / (float)2);
-        path.close();
-        Tools.newCanvas(b_DownArrow).drawPath(path, paint);
-        //END: DownArrow Bitmap.
     }
     void draw(Canvas canvas){
+        Paint paint = Tools.colorPaint(0, true);
+        Tools.resetBitmap(c_Board ,MyColor.WHITE);
+        c_Board.drawRect(rect_S[RECT_TOP1], paint);
+        c_Board.drawRect(rect_S[RECT_BOTTOM2], paint);
         for (int x = 0; x < boardW; x++){
             for (int y = 0; y < boardH; y++){
-                tile_S[y][x].draw(canvas);
+                tile_S[y][x].draw(c_Board);
             }
         }
-        int arrowX = xPos + tileSize * boardW;
-        for (int y = 0; y < boardH; y++){
-            canvas.drawBitmap(b_DownArrow, arrowX, yPos + tileSize * y, null);
-        }
+        c_Board.drawBitmap(b_Board, rect_S[RECT_TOP1], rect_S[RECT_BOTTOM1], null);
+        c_Board.drawBitmap(b_Board, rect_S[RECT_BOTTOM2], rect_S[RECT_TOP2], null);
+        c_Board.drawBitmap(b_Board, rect_S[RECT_BOTTOM1], rect_S[RECT_TOP1], null);
+        c_Board.drawRect(rect_S[RECT_TOP1], Tools.colorPaint(MyColor.aColor(0x7f, MyColor.hsvColor(0, 80, 50))));
+        canvas.drawBitmap(b_Board, rect_S[RECT_MIDDLE], Tools.rectWH(xPos, yPos, width, height), null);
     }
     @Override
     public void onTimer(int id, int sendNum) {

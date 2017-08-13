@@ -7,6 +7,7 @@ import android.view.KeyEvent;
 
 import kr.co.lumylumy.linekeeper.log.LogSystem;
 import kr.co.lumylumy.linekeeper.main.GameMain;
+import kr.co.lumylumy.linekeeper.tools.MyColor;
 import kr.co.lumylumy.linekeeper.tools.Tools;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
 
@@ -29,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
             onCreateFlag = false;
             Tools.tools_initial(this);
             SurfaceDrawView drawView = (SurfaceDrawView) findViewById(R.id.drawView);
+            drawView.setBackground(MyColor.hsvColor(0, 0, 30));
             gameMain = new GameMain(this, drawView);
             gameMain.activityResume();
         }

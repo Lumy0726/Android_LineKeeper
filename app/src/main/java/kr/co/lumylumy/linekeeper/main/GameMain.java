@@ -20,7 +20,7 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 
 public class GameMain implements TimerAble, TouchEvent{
     //resolution.
-    static final int WIDTH = 600, HEIGHT = 900;
+    static final int WIDTH = 600, HEIGHT = 1066;
     //activity
     AppCompatActivity activity;
     //Timer.

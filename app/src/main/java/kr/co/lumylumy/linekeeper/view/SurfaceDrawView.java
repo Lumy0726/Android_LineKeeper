@@ -17,6 +17,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import kr.co.lumylumy.linekeeper.log.LogSystem;
+import kr.co.lumylumy.linekeeper.tools.MyColor;
 import kr.co.lumylumy.linekeeper.tools.Tools;
 
 import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
@@ -40,6 +41,8 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
     boolean fpsOutput = false;
     Paint fpsPaint;
 
+    int defaultBackground = MyColor.BLACK;
+
     TouchEvent touchEventClass;
     public interface TouchEvent{
         int CANCEL = 0, DOWN = 1, MOVE = 2, UP = 3;
@@ -58,15 +61,14 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
         (mHolder = getHolder()).addCallback(this);
         fpsPaint = Tools.textPaint(0xffff7777, 40, Paint.Align.LEFT);
     }
+    public void setBackground(int color){ defaultBackground = MyColor.aColor(0xff, color); }
     public Canvas setBitmap(Bitmap input, boolean left){
         if (left){
             return setBitmap(input, -1);
         }
         return setBitmap(input, 1);
     }
-    public Canvas setBitmap(Bitmap input){
-        return setBitmap(input, 0);
-    }
+    public Canvas setBitmap(Bitmap input){ return setBitmap(input, 0); }
     protected Canvas setBitmap(Bitmap input, int bias) {
         if (input != null){
             synchronized(this){
@@ -192,7 +194,7 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
                 viewCanvas  = mHolder.lockCanvas();
                 if (viewCanvas != null){
                     synchronized(mHolder){
-                        viewCanvas.drawColor(0xff000000);
+                        viewCanvas.drawColor(defaultBackground);
                         if (saveBitmap != null){
                             viewCanvas.drawBitmap(saveBitmap, null, rect, null);
                         }

@@ -4,6 +4,7 @@ import android.graphics.Canvas;
 import android.view.MotionEvent;
 
 import kr.co.lumylumy.linekeeper.tools.MyColor;
+import kr.co.lumylumy.linekeeper.tools.Tools;
 
 /**
  * Created by LMJ on 2017-08-08.
@@ -23,7 +24,8 @@ public class GamePlay implements GameBase{
     void init(){
         int width = gameMain.dv_CanvasWidth;
         int height = gameMain.dv_CanvasHeight;
-        gameBoard = new GameBoard(0, height / 10, width);
+        gameBoard = new GameBoard(width, height);
+
     }
     @Override
     public void onStart() {
