@@ -11,6 +11,7 @@ import android.graphics.Shader;
 import android.view.MotionEvent;
 
 import kr.co.lumylumy.linekeeper.tools.Tools;
+import kr.co.lumylumy.linekeeper.tools.TouchInfo;
 import kr.co.lumylumy.linekeeper.tools.MyColor;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
 
@@ -96,13 +97,14 @@ public class GameMenu implements GameBase {
     public void onTimer(int id, int sendNum) {
         //NONE.
     }
+
     @Override
-    public boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent) {
-        switch (action) {
-            case SurfaceDrawView.TouchEvent.DOWN:
+    public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
+        switch (touchInfo.action) {
+            case TouchInfo.DOWN:
                 for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
-                    if (menu_S[loop1].inMenu(x, y)) {
-                        menu_S[loop1].touchId = id;
+                    if (menu_S[loop1].inMenu(touchInfo.x, touchInfo.y)) {
+                        menu_S[loop1].touchId = touchInfo.id;
                         menu_S[loop1].touchState = true;
                         menu_S[loop1].draw(gameMain.dv_Canvas);
                         gameMain.drawView.update();
@@ -110,13 +112,13 @@ public class GameMenu implements GameBase {
                     }
                 }
                 break;
-            case SurfaceDrawView.TouchEvent.UP:
+            case TouchInfo.UP:
                 for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
-                    if (menu_S[loop1].touchState && menu_S[loop1].touchId == id){
+                    if (menu_S[loop1].touchState && menu_S[loop1].touchId == touchInfo.id){
                         menu_S[loop1].touchState = false;
                         menu_S[loop1].draw(gameMain.dv_Canvas);
                         gameMain.drawView.update();
-                        if (menu_S[loop1].inMenu(x, y)) {
+                        if (menu_S[loop1].inMenu(touchInfo.x, touchInfo.y)) {
                             switch(loop1){
                                 case MENU_START:
                                     gameMain.setGameState(GameMain.GSTATE_PLAY);
@@ -130,7 +132,7 @@ public class GameMenu implements GameBase {
                     }
                 }
                 break;
-            case SurfaceDrawView.TouchEvent.CANCEL:
+            case TouchInfo.CANCEL:
                 for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
                     menu_S[loop1].touchState = false;
                     menu_S[loop1].draw(gameMain.dv_Canvas);

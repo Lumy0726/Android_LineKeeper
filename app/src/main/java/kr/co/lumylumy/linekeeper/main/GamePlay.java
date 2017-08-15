@@ -3,8 +3,13 @@ package kr.co.lumylumy.linekeeper.main;
 import android.graphics.Canvas;
 import android.view.MotionEvent;
 
+import java.util.ArrayList;
+import java.util.ListIterator;
+
 import kr.co.lumylumy.linekeeper.tools.MyColor;
 import kr.co.lumylumy.linekeeper.tools.Tools;
+import kr.co.lumylumy.linekeeper.tools.TouchInfo;
+import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
 
 /**
  * Created by LMJ on 2017-08-08.
@@ -19,6 +24,9 @@ public class GamePlay implements GameBase{
     int gameBoardMargin;
     //GameBoard
     GameBoard gameBoard;
+    int gameBoardW, gameBoardH;
+    //TouchEvent.
+    ArrayList<TouchInfo> touchInfo_S = new ArrayList<>();
 
     //constructer
     public GamePlay(GameMain gameMain){
@@ -29,7 +37,8 @@ public class GamePlay implements GameBase{
         dv_Width = gameMain.dv_CanvasWidth;
         dv_Height = gameMain.dv_CanvasHeight;
         gameBoard = new GameBoard(dv_Width, dv_Height);
-        gameBoardMargin = dv_Height - gameBoard.height;
+        gameBoardW = gameBoard.width; gameBoardH = gameBoard.height;
+        gameBoardMargin = dv_Height - gameBoardH;
     }
     @Override
     public void onStart() {
@@ -46,11 +55,43 @@ public class GamePlay implements GameBase{
         gameBoard.draw(gameMain.dv_Canvas);
         gameMain.drawView.update();
     }
+
     @Override
-    public boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent) {
-        if (gameBoardMargin < y){
-            return gameBoard.touchEvent(x, y - gameBoardMargin, id, action, rawEvent);
+    public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
+        TouchInfo t_Info;
+        switch(touchInfo.action){
+            case TouchInfo.DOWN:
+                touchInfo_S.add(touchInfo);
+                if (inGameBoard(touchInfo)){
+                    return gameBoard.touchEvent(gameBoardTouch(touchInfo), rawEvent);
+                }
+                return true;
+            case TouchInfo.MOVE:
+            case TouchInfo.UP:
+                ListIterator<TouchInfo> it = touchInfo_S.listIterator();
+                while(it.hasNext()){
+                    t_Info = it.next();
+                    if (t_Info.id == touchInfo.id){
+                        //t_Info has the first position of touchInfo.
+                        if (touchInfo.action == TouchInfo.UP) it.remove();
+                        if (inGameBoard(t_Info)){
+                            return gameBoard.touchEvent(gameBoardTouch(touchInfo), rawEvent);
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            case TouchInfo.CANCEL:
+                touchInfo_S.clear();
+                return gameBoard.touchEvent(touchInfo, rawEvent);
+            default: return false;
         }
-        return true;
     }
+    boolean inGameBoard(TouchInfo touchInfo){
+         return 0 <= touchInfo.x &&
+                 touchInfo.x < gameBoardW &&
+                 gameBoardMargin <= touchInfo.y &&
+                 touchInfo.y < gameBoardMargin + gameBoardH;
+    }
+    TouchInfo gameBoardTouch(TouchInfo touchInfo){ return new TouchInfo(touchInfo.x, touchInfo.y - gameBoardMargin, touchInfo.id, touchInfo.action); }
 }

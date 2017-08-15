@@ -17,8 +17,10 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 import kr.co.lumylumy.linekeeper.log.LogSystem;
+import kr.co.lumylumy.linekeeper.timer.TimeCheck;
 import kr.co.lumylumy.linekeeper.tools.MyColor;
 import kr.co.lumylumy.linekeeper.tools.Tools;
+import kr.co.lumylumy.linekeeper.tools.TouchInfo;
 
 import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
 
@@ -45,8 +47,7 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
 
     TouchEvent touchEventClass;
     public interface TouchEvent{
-        int CANCEL = 0, DOWN = 1, MOVE = 2, UP = 3;
-        boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent);
+        boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent);
     }
 
     public SurfaceDrawView(Context context){
@@ -140,30 +141,34 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
             boolean returnValue;
             int action, id, index, indexMax;
             float x, y;
+            TouchInfo touchInfo;
             action = event.getActionMasked();
             switch(action){
                 case MotionEvent.ACTION_DOWN:
                 case MotionEvent.ACTION_POINTER_DOWN:
                     id = event.getPointerId(index = event.getActionIndex());
                     x = (event.getX(index) - marginX) * ratio; y = (event.getY(index) - marginY) * ratio;
-                    return touchEventClass.touchEvent(x, y, id, TouchEvent.DOWN, event);
+                    touchInfo = new TouchInfo(x, y, id, TouchInfo.DOWN);
+                    return touchEventClass.touchEvent(touchInfo, event);
                 case MotionEvent.ACTION_MOVE:
                     returnValue = true;
                     indexMax = event.getPointerCount();
                     for (index = 0; index < indexMax; index++){
                         id = event.getPointerId(index);
                         x = (event.getX(index) - marginX) * ratio; y = (event.getY(index) - marginY) * ratio;
-                        if (!touchEventClass.touchEvent(x, y, id, TouchEvent.MOVE, event)) returnValue = false;
+                        touchInfo = new TouchInfo(x, y, id, TouchInfo.MOVE);
+                        if (!touchEventClass.touchEvent(touchInfo, event)) returnValue = false;
                     }
                     return returnValue;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_POINTER_UP:
                     id = event.getPointerId(index = event.getActionIndex());
                     x = (event.getX(index) - marginX) * ratio; y = (event.getY(index) - marginY) * ratio;
-                    return touchEventClass.touchEvent(x, y, id, TouchEvent.UP, event);
+                    touchInfo = new TouchInfo(x, y, id, TouchInfo.UP);
+                    return touchEventClass.touchEvent(touchInfo, event);
                 case MotionEvent.ACTION_CANCEL:
                 case MotionEvent.ACTION_OUTSIDE:
-                    return touchEventClass.touchEvent(0, 0, 0, TouchEvent.CANCEL, event);
+                    return touchEventClass.touchEvent(new TouchInfo(0, 0, 0, TouchInfo.CANCEL), event);
             }
         }
         else {
@@ -185,6 +190,7 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) { thread.off(); }
     //Call in another thread.
+    //TimeCheck time_Test = new TimeCheck();
     protected void reDraw(){
         Canvas viewCanvas = null;
         if (updateState){
@@ -194,10 +200,12 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
                 viewCanvas  = mHolder.lockCanvas();
                 if (viewCanvas != null){
                     synchronized(mHolder){
+                        //time_Test.reset();
                         viewCanvas.drawColor(defaultBackground);
                         if (saveBitmap != null){
                             viewCanvas.drawBitmap(saveBitmap, null, rect, null);
                         }
+                        //androidLog(String.format("DrawView: %5.2f", time_Test.getTimeAv()));
                         if (fpsOutput){
                             viewCanvas.drawText(String.format("FPS:%5.2f", framePerSec), 0, viewCanvas.getHeight(), fpsPaint);
                         }

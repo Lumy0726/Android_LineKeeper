@@ -10,10 +10,20 @@ import android.graphics.Rect;
 import android.graphics.Shader;
 import android.view.MotionEvent;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+
+import kr.co.lumylumy.linekeeper.log.LogSystem;
+import kr.co.lumylumy.linekeeper.timer.TimeCheck;
 import kr.co.lumylumy.linekeeper.timer.TimerAble;
 import kr.co.lumylumy.linekeeper.tools.MyColor;
 import kr.co.lumylumy.linekeeper.tools.Tools;
+import kr.co.lumylumy.linekeeper.tools.TouchInfo;
+import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
+
+import static android.R.attr.id;
+import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
 
 /**
  * Created by LMJ on 2017-08-12.
@@ -32,6 +42,7 @@ public class GameBoard implements TimerAble, TouchEvent {
     static final int RECT_TOP1 = 0, RECT_TOP2 = 1, RECT_BOTTOM1 = 2, RECT_BOTTOM2 = 3, RECT_MIDDLE = 4;
     Rect[] rect_S = new Rect[5];
     //touchInput.
+    ArrayList<TouchInfo> touchInput = new ArrayList<>();
     static final int TOUCHNUM_MAX = 3;
     int touchNum;
     int[] touchId = new int[TOUCHNUM_MAX];
@@ -81,39 +92,57 @@ public class GameBoard implements TimerAble, TouchEvent {
         for (int x = 0; x < boardW; x++){
             for (int y = 0; y < boardH; y++){
                 coord1 = new Coord(coord).setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
+                Direction direction = null;
                 switch((int)(Math.random() * 4)){
-                    case 0: tile_S[y][x] = new TileA(new Direction(Direction.R), coord1);
+                    case 0: direction = new Direction(Direction.R); break;
+                    case 1: direction = new Direction(Direction.U); break;
+                    case 2: direction = new Direction(Direction.L); break;
+                    case 3: direction = new Direction(Direction.D); break;
+                }
+                switch((int)(Math.random() * 3)){
+                    case 0:
+                    case 1:
+                        tile_S[y][x] = new TileA(direction, coord1);
                         break;
-                    case 1: tile_S[y][x] = new TileA(new Direction(Direction.U), coord1);
-                        break;
-                    case 2: tile_S[y][x] = new TileA(new Direction(Direction.L), coord1);
-                        break;
-                    case 3: tile_S[y][x] = new TileA(new Direction(Direction.D), coord1);
+                    case 2:
+                        tile_S[y][x] = new TileB(direction, coord1);
                         break;
                 }
             }
         }
         //TilePos Coord setting.
         tilePos = new Coord();
-        tilePos.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
+        tilePos.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CONSTRAINT);
         tilePos.setBorder(0, boardW, 0, boardH + 1);
     }
     //canvas draw.
+    //TimeCheck time_I = new TimeCheck();
+    //TimeCheck time_D = new TimeCheck();
+    //TimeCheck time_C = new TimeCheck();
+    //TimeCheck time_M = new TimeCheck();
     void draw(Canvas canvas){
+        //time_I.reset();
         Paint paint = Tools.colorPaint(0, true);
         Tools.resetBitmap(c_Board ,MyColor.WHITE);
         c_Board.drawRect(rect_S[RECT_TOP1], paint);
         c_Board.drawRect(rect_S[RECT_BOTTOM2], paint);
+        //androidLog(String.format("GameBoard-draw-initialize: %5.2f", time_I.getTimeAv()));
+        //time_D.reset();
         for (int x = 0; x < boardW; x++){
             for (int y = 0; y < boardH; y++){
                 tile_S[y][x].draw(c_Board);
             }
         }
+        //androidLog(String.format("GameBoard-draw-tileDraw: %5.2f", time_D.getTimeAv()));
+        //time_C.reset();
         c_Board.drawBitmap(b_Board, rect_S[RECT_TOP1], rect_S[RECT_BOTTOM1], null);
         c_Board.drawBitmap(b_Board, rect_S[RECT_BOTTOM2], rect_S[RECT_TOP2], null);
         c_Board.drawBitmap(b_Board, rect_S[RECT_BOTTOM1], rect_S[RECT_TOP1], null);
         c_Board.drawRect(rect_S[RECT_TOP1], Tools.colorPaint(MyColor.aColor(0x7f, MyColor.hsvColor(0, 80, 50))));
+        //androidLog(String.format("GameBoard-draw-timeCycle: %5.2f", time_C.getTimeAv()));
+        //time_M.reset();
         canvas.drawBitmap(b_Board, rect_S[RECT_MIDDLE], Tools.rectWH(xPos, yPos, width, height), null);
+        //androidLog(String.format("GameBoard-draw-main: %5.2f", time_M.getTimeAv()));
     }
     //
     int getTileY(Coord input){ return Tools.remainder(input.getY() - 1, boardH); }
@@ -132,62 +161,70 @@ public class GameBoard implements TimerAble, TouchEvent {
             }
         }
     }
+
     @Override
-    public boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent) {
+    public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
         int loop1;
-        switch(action){
-            case TouchEvent.DOWN:
-                touchId[touchNum] = id;
-                touchX[touchNum] = x; touchY[touchNum] = y;
-                touchNum++;
+        boolean flag;
+        TouchInfo t_Info = null;
+        Iterator<TouchInfo> it;
+        switch(touchInfo.action){
+            case TouchInfo.DOWN:
+                touchInput.add(touchInfo);
                 break;
-            case TouchEvent.UP:
-                //find id.
-                for(loop1 = 0; loop1 < touchNum; loop1++){
-                    if (touchId[loop1] == id){ break; }
+            case TouchInfo.UP:
+                //find first TouchInfo of touchInfo.id.
+                it = touchInput.iterator();
+                flag = false;
+                while(it.hasNext()){
+                    t_Info = it.next();
+                    if (t_Info.id == touchInfo.id){
+                        //find first TouchInfo complete.
+                        it.remove();
+                        flag = true;
+                        break;
+                    }
                 }
-                if (loop1 != touchNum){//find success.
+                if (flag){
                     //save position.
-                    tilePos.setPos((int)touchX[loop1] / tileSize, (int)touchY[loop1] / tileSize);
-                    //delete id.
-                    if (loop1 != touchNum - 1){
-                        touchId[loop1] = touchId[touchNum - 1];
-                        touchX[loop1] = touchX[touchNum - 1];
-                        touchY[loop1] = touchY[touchNum - 1];
-                    }
-                    touchNum--;
+                    tilePos.setPos((int) t_Info.x / tileSize, (int) t_Info.y / tileSize);
                     //process touch.
-                    int dx = (int)x / tileSize - tilePos.getX();
-                    int dy = (int)y / tileSize - tilePos.getY();
+                    int dx = Tools.floorByDiv((int)touchInfo.x, tileSize) / tileSize - tilePos.getX();
+                    int dy = Tools.floorByDiv((int)touchInfo.y, tileSize) / tileSize - tilePos.getY();
                     Tile tile = getTile(tilePos);
-                    if (dx == 0 && dy == 0){//rotate process.
-                        if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_R);
-                    }
-                    else if (dx == 0 || dy == 0){//move process.
+                    if (dx == 0 && dy == 0) {//rotate process.
+                        if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_L);
+                    } else if (dx == 0 || dy == 0) {//move process.
                         //get direction.
                         Direction di = new Direction(), diM;
-                        if (dx > 0){ di.set(Direction.R); }
-                        else if (dx < 0){ di.set(Direction.L); }
-                        else if (dy > 0){ di.set(Direction.D); }
-                        else { di.set(Direction.U); }
+                        if (dx > 0) {
+                            di.set(Direction.R);
+                        } else if (dx < 0) {
+                            di.set(Direction.L);
+                        } else if (dy > 0) {
+                            di.set(Direction.D);
+                        } else {
+                            di.set(Direction.U);
+                        }
                         diM = new Direction(di).mirror();
                         //get movePos.
                         Coord movePos = new Coord(tilePos);
                         movePos.move(di);
                         //process.
-                        if (!movePos.isOut()){
+                        if (!movePos.isOut()) {
                             Tile moveTile = getTile(movePos);
-                            if (tile.processAble(di) && moveTile.processAble(diM)){
+                            if (tile.processAble(di) && moveTile.processAble(diM)) {
                                 //tile can move.
-                                tile.startProcess(di); moveTile.startProcess(diM);
+                                tile.startProcess(di);
+                                moveTile.startProcess(diM);
                                 tileSwap(tilePos, movePos);
                             }
                         }
                     }
                 }
                 break;
-            case TouchEvent.CANCEL:
-                touchNum = 0;
+            case TouchInfo.CANCEL:
+                touchInput.clear();
                 break;
         }
         return true;
@@ -285,9 +322,9 @@ abstract class Tile implements TimerAble{
                 isProcessing = false;
             }
             if (p_Content == P_ROTATE_R || p_Content == P_ROTATE_L){//rotate process.
-                if (isProcessing){ processDirectionToBitmap(); }
+                if (isProcessing){ directionToBitmap(); }
                 else {
-                    direction.rotate((p_Content == P_ROTATE_R)?true:false, 2);
+                    direction.rotate((p_Content == P_ROTATE_L)?true:false, 2);
                     directionToBitmap();
                 }
             }
@@ -304,27 +341,19 @@ abstract class Tile implements TimerAble{
     void draw(Canvas canvas){ canvas.drawBitmap(outBitmap, pos.getX() - outBitmap.getWidth() / 2, pos.getY() - outBitmap.getHeight() / 2, null); }
     void directionToBitmap(){
         int di = direction.get();
-        switch(di){
-            case Direction.R: outBitmap = rotateBitmap[0];
-                break;
-            case Direction.U: outBitmap = rotateBitmap[P_LEVEL];
-                break;
-            case Direction.L: outBitmap = rotateBitmap[P_LEVEL * 2];
-                break;
-            case Direction.D: outBitmap = rotateBitmap[P_LEVEL * 3];
-                break;
+        int rotateValue = 0, angle = P_LEVEL * 4;
+        if (isProcessing){
+            if (p_Content == P_ROTATE_L) rotateValue = p_Level;
+            if (p_Content == P_ROTATE_R) rotateValue = -p_Level;
         }
-    }
-    void processDirectionToBitmap(){
-        int di = direction.get();
         switch(di){
-            case Direction.R: outBitmap = rotateBitmap[p_Level];
+            case Direction.R: outBitmap = rotateBitmap[Tools.remainder(rotateValue, angle)];
                 break;
-            case Direction.U: outBitmap = rotateBitmap[P_LEVEL + p_Level];
+            case Direction.U: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL + rotateValue, angle)];
                 break;
-            case Direction.L: outBitmap = rotateBitmap[P_LEVEL * 2 + p_Level];
+            case Direction.L: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL * 2 + rotateValue, angle)];
                 break;
-            case Direction.D: outBitmap = rotateBitmap[(P_LEVEL * 3 + p_Level) % (P_LEVEL * 4)];
+            case Direction.D: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL * 3 + rotateValue, angle)];
                 break;
         }
     }
@@ -339,6 +368,7 @@ abstract class Tile implements TimerAble{
         Tile.tileSize = tileSize;
         moveSpeed = tileSize / P_LEVEL;
         TileA.makeTileBitmap();
+        TileB.makeTileBitmap();
     }
 }
 
@@ -362,7 +392,33 @@ class TileA extends Tile{ //Straight Line.
         canvas.setBitmap(bitmap_S[0]);
         canvas.drawRect(rect, paint);
         for (int loop1 = 1; loop1 < bitmap_S.length; loop1++){
-            matrix.setRotate((float)360 * loop1 / bitmap_S.length);
+            matrix.setRotate(-(float)360 * loop1 / bitmap_S.length);
+            bitmap_S[loop1] = Bitmap.createBitmap(bitmap_S[0], 0, 0, tileSize, tileSize, matrix, false);
+        }
+    }
+}
+
+class TileB extends Tile{ //Straight Line.
+    //Bitmap.
+    static Bitmap[] bitmap_S = new Bitmap[Tile.P_LEVEL * 4];
+    TileB(Direction direction, Coord pos){ super(direction, pos); }
+    @Override
+    boolean isConnect(int input, int output) {
+        return false;
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }
+    static void makeTileBitmap(){
+        Canvas canvas = new Canvas();
+        Paint paint = new Paint();
+        Matrix matrix = new Matrix();
+        paint.setShader(new LinearGradient(0, 0, 0, tileSize, MyColor.GREEN, MyColor.MAGENTA, Shader.TileMode.CLAMP));
+        Rect rect = new Rect(0, 0, tileSize, tileSize);
+        bitmap_S[0] = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(bitmap_S[0]);
+        canvas.drawRect(rect, paint);
+        for (int loop1 = 1; loop1 < bitmap_S.length; loop1++){
+            matrix.setRotate(-(float)360 * loop1 / bitmap_S.length);
             bitmap_S[loop1] = Bitmap.createBitmap(bitmap_S[0], 0, 0, tileSize, tileSize, matrix, false);
         }
     }
@@ -379,8 +435,8 @@ class Direction{
         return this;
     }
     int get(){ return direction; }
-    Direction rotate(boolean right, int num){
-        direction += (right?1:-1) * num;
+    Direction rotate(boolean left, int num){
+        direction += (left?1:-1) * num;
         direction = Tools.remainder(direction, 8);
         return this;
     }

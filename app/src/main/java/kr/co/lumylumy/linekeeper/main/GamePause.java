@@ -2,6 +2,8 @@ package kr.co.lumylumy.linekeeper.main;
 
 import android.view.MotionEvent;
 
+import kr.co.lumylumy.linekeeper.tools.TouchInfo;
+
 /**
  * Created by LMJ on 2017-08-08.
  */
@@ -25,8 +27,9 @@ public class GamePause implements GameBase{
     public void onTimer(int id, int sendNum) {
 
     }
+
     @Override
-    public boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent) {
+    public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
         return false;
     }
 }

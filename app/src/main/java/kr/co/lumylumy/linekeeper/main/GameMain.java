@@ -11,12 +11,25 @@ import kr.co.lumylumy.linekeeper.log.LogSystem;
 import kr.co.lumylumy.linekeeper.timer.Timer;
 import kr.co.lumylumy.linekeeper.timer.TimerAble;
 import kr.co.lumylumy.linekeeper.tools.Tools;
+import kr.co.lumylumy.linekeeper.tools.TouchInfo;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 
 /**
  * Created by LMJ on 2017-08-07.
  */
+
+/*
+---Job List---
+DEV.
+    GameBoard - 터치로 타일 움직일 때 길게 움직이는 기능 추가.
+    Tile - isProcessing인 타일이 그렇지 않은 타일보다 위에 그려지도록 하기.
+    이미지를 resource폴더에 넣어두고 로드하기.
+        --->이미지가 apk에서 바로 보이지 않도록 간단한 변환을 한 뒤 저장, 불러올때 변환 제거하고 Bitmap으로 변환.
+    GameBoard - 이후 계속 개발.
+DEBUG.
+    ?
+*/
 
 public class GameMain implements TimerAble, TouchEvent{
     //resolution.
@@ -103,8 +116,8 @@ public class GameMain implements TimerAble, TouchEvent{
         if (id == TIMERID_MAIN) gameClass.onTimer(id, sendNum);
     }
     @Override
-    public boolean touchEvent(float x, float y, int id, int action, MotionEvent rawEvent) {
-        return gameClass.touchEvent(x, y, id, action, rawEvent);
+    public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
+        return gameClass.touchEvent(touchInfo, rawEvent);
     }
 
     //activity state

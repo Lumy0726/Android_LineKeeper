@@ -91,6 +91,7 @@ public class Tools {
         int rValue = value % div;
         return (rValue < 0)? rValue + div: rValue;
     }
+    public static int floorByDiv(int value, int div){ return value - remainder(value, div); }
     //Canvas, Bitmap, Paint, Rect.
     public static Rect rectWH(int x, int y, int w, int h){ return new Rect(x, y, x + w, y + h); }
     public static Paint aaPaint(Paint paint){
