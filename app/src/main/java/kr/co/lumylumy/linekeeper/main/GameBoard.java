@@ -78,15 +78,32 @@ public class GameBoard implements TimerAble, TouchEvent {
         //
         Canvas canvas = new Canvas();
         //control Bitmap.
-        b_Control = Bitmap.createBitmap(outputWidth, tileSize, Bitmap.Config.ARGB_8888);
-        canvas.setBitmap(b_Control);
-        Tools.resetBitmap(canvas, MyColor.hsvColor(30, 100, 100));
-        //Cursor Bitmap.
-        b_Cursor = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
-        canvas.setBitmap(b_Cursor);
-        Tools.resetBitmap(canvas, MyColor.RED);
-        int cursorWidth = tileSize / 15;
-        canvas.drawRect(cursorWidth, cursorWidth, tileSize - cursorWidth, tileSize - cursorWidth, Tools.colorPaint(0, true));
+        {
+            Matrix matrix = new Matrix();
+            b_Control = Bitmap.createBitmap(outputWidth, tileSize, Bitmap.Config.ARGB_8888);
+            Bitmap bitmap_Arrow = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+            Bitmap bitmap_Retry = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+            Bitmap frameBitmap = frameBitmap(tileSize, tileSize, MyColor.hsvColor(30, 100, 100));
+            canvas.setBitmap(bitmap_Arrow);
+            canvas.drawBitmap(frameBitmap, 0, 0, null);
+            canvas.drawBitmap(arrowBitmap(tileSize, tileSize, MyColor.RED), 0, 0, null);
+            canvas.setBitmap(bitmap_Retry);
+            canvas.drawBitmap(frameBitmap, 0, 0, null);
+            canvas.drawBitmap(retryArrowBitmap(tileSize, MyColor.RED), 0, 0, null);
+            canvas.setBitmap(b_Control);
+            Tools.resetBitmap(canvas, MyColor.WHITE);
+            canvas.drawRect(outputWidth - tileSize * 5, 0, outputWidth, tileSize, Tools.colorPaint(MyColor.hsvColor(0, 0, 80)));
+            matrix.setRotate(-90);
+            canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), outputWidth - tileSize * 4, 0, null);
+            matrix.setRotate(-180);
+            canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), outputWidth - tileSize * 3, 0, null);
+            canvas.drawBitmap(bitmap_Arrow, outputWidth - tileSize * 2, 0, null);
+            matrix.setRotate(90);
+            canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), outputWidth - tileSize * 1, 0, null);
+            canvas.drawBitmap(bitmap_Retry, outputWidth - tileSize * 5, 0, null);
+            //Cursor Bitmap.
+            b_Cursor = frameBitmap(tileSize, tileSize, MyColor.RED);
+        }
         //BitmapBoard.
         b_Board = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888);
         c_Board = Tools.newCanvas(b_Board);
@@ -126,6 +143,60 @@ public class GameBoard implements TimerAble, TouchEvent {
         cursorTilePos.setBorder(0, BOARDW, 0, BOARDH + 1);
         cursorTilePos.forceOut();
     }
+    Bitmap arrowBitmap(int width, int height, int color){
+        int arrowWidth = width / 10, width_2 = width / 2;
+        Bitmap rValue = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Path path = new Path();
+        path.moveTo(width_2, arrowWidth);
+        path.rLineTo(arrowWidth * 3 / 2, arrowWidth * 2);
+        path.lineTo(width_2 + arrowWidth / 2, arrowWidth * 3);
+        path.lineTo(width_2 + arrowWidth / 2, height - arrowWidth);
+        path.rLineTo(-arrowWidth, 0);
+        path.lineTo(width_2 - arrowWidth / 2, arrowWidth * 3);
+        path.rLineTo(-arrowWidth, 0);
+        path.close();
+        Paint paint = Tools.colorPaint(color);
+        paint.setStyle(Paint.Style.FILL);
+        Tools.newCanvas(rValue).drawPath(path, paint);
+        return rValue;
+    }
+    Bitmap frameBitmap(int width, int height, int color){
+        Bitmap rValue;
+        Canvas canvas = new Canvas();
+        rValue = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(rValue);
+        Tools.resetBitmap(canvas, color);
+        int marginX = width / 15;
+        int marginY = height / 15;
+        canvas.drawRect(marginX, marginY, width - marginX, height - marginY, Tools.colorPaint(0, true));
+        return rValue;
+    }
+    Bitmap retryArrowBitmap(int size, int color){
+        float middle = size / (float)2, quarter = size / (float)4, width_2 = size / 20;
+        Bitmap rValue;
+        Paint paint;
+        Path path = new Path();
+        Canvas canvas = new Canvas();
+        rValue = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(rValue);
+        canvas.drawCircle(middle, middle, quarter + width_2, Tools.colorPaint(color));
+        canvas.drawCircle(middle, middle, quarter - width_2, paint = Tools.colorPaint(0, true));
+        paint.setStyle(Paint.Style.FILL);
+        path.moveTo(0, quarter);
+        path.lineTo(middle, 0);
+        path.lineTo(middle, middle);
+        path.close();
+        canvas.drawPath(path, paint);
+        paint.setColor(color);
+        path.reset();
+        path.moveTo(middle, quarter - width_2 * 3);
+        path.lineTo(middle - width_2 * 3, quarter);
+        path.lineTo(middle, quarter + width_2 * 3);
+        path.close();
+        canvas.drawPath(path, paint);
+        return rValue;
+    }
+
     //canvas draw.
     //TimeCheck time_I = new TimeCheck();
     //TimeCheck time_D = new TimeCheck();
@@ -181,16 +252,48 @@ public class GameBoard implements TimerAble, TouchEvent {
         Iterator<TouchInfo> it;
         boolean flag;
         Coord touchTilePos = new Coord(cursorTilePos);
+        Tile tile, tile2;
         switch(touchInfo.action){
             case TouchInfo.DOWN:
                 touchInput.add(touchInfo);
                 touchTilePos.setPos((int) touchInfo.x / tileSize, (int) touchInfo.y / tileSize);
                 if (touchTilePos.isOut()){//touch control button
-
+                    if (!cursorTilePos.isOut()){
+                        tile = getTile(cursorTilePos);
+                        int x = (int) touchInfo.x / tileSize;
+                        if (x == 1){
+                            if (tile.processAble(Tile.P_ROTATE_L)) tile.startProcess(Tile.P_ROTATE_L);
+                        }
+                        else {
+                            Direction di = null, diM;
+                            Coord obPos;
+                            switch(x){
+                                case 2: di = new Direction(Direction.L); break;
+                                case 3: di = new Direction(Direction.D); break;
+                                case 4: di = new Direction(Direction.U); break;
+                                case 5: di = new Direction(Direction.R); break;
+                            }
+                            if (di != null){
+                                obPos = new Coord(cursorTilePos);
+                                obPos.move(di);
+                                if (!obPos.isOut()){
+                                    diM = new Direction(di);
+                                    diM.mirror();
+                                    tile2 = getTile(obPos);
+                                    if (tile.processAble(di) && tile2.processAble(diM)){
+                                        tileSwap(cursorTilePos, obPos);
+                                        tile.startProcess(di);
+                                        tile2.startProcess(diM);
+                                        cursorTilePos = obPos;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 else {//select tile
                     if (cursorTilePos.samePos(touchTilePos)){
-                        Tile tile = getTile(cursorTilePos);
+                        tile = getTile(cursorTilePos);
                         if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_R);
                     }
                     else { cursorTilePos = touchTilePos; }
@@ -210,15 +313,7 @@ public class GameBoard implements TimerAble, TouchEvent {
                     }
                 }
                 if (flag){
-                    touchTilePos.setPos(
-                            Tools.floorByDiv((int)touchInfo.x, tileSize) / tileSize,
-                            Tools.floorByDiv((int)touchInfo.y, tileSize) / tileSize);
-                    if (!touchTilePos.isOut()){//touch out in tile.
-
-                    }
-                    else {
-                        //need control process
-                    }
+                    //process touch out.
                 }
                 break;
             case TouchInfo.CANCEL:
