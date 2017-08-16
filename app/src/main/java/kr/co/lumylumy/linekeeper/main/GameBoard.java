@@ -31,16 +31,18 @@ import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
 
 public class GameBoard implements TimerAble, TouchEvent {
     //
-    static final int boardW = 6, boardH= 8;
+    static final int BOARDW = 6, BOARDH= 8;
     //size.
-    int xPos, yPos, width, height, tileSize;
+    int xPos, yPos, outputWidth, outputHeight, tileSize;
     //tiles
-    Tile[][] tile_S = new Tile[boardH][boardW];
+    Tile[][] tile_S = new Tile[BOARDH][BOARDW];
     //Gameboard Bitmap.
     Bitmap b_Board;
     Canvas c_Board;
     static final int RECT_TOP1 = 0, RECT_TOP2 = 1, RECT_BOTTOM1 = 2, RECT_BOTTOM2 = 3, RECT_MIDDLE = 4;
     Rect[] rect_S = new Rect[5];
+    //other Bitmap.
+    Bitmap b_Control, b_Cursor;
     //touchInput.
     ArrayList<TouchInfo> touchInput = new ArrayList<>();
     static final int TOUCHNUM_MAX = 3;
@@ -49,48 +51,56 @@ public class GameBoard implements TimerAble, TouchEvent {
     float[] touchX = new float[TOUCHNUM_MAX];
     float[] touchY = new float[TOUCHNUM_MAX];
     //
-    Coord tilePos;
+    Coord cursorTilePos;
 
     //constructor.
-    GameBoard(int width){
-        tileSize = width / boardW;
-        this.width = tileSize * boardW;
-        this.height = tileSize * (boardH + 1);
-        xPos = 0; yPos = 0;
-        init();
-    }
+    GameBoard(int width){ this(0, 0, width); }
     GameBoard(int width, int height){
-        tileSize = width / boardW;
-        this.width = tileSize * boardW;
-        this.height = tileSize * (boardH + 1);
-        xPos = 0; yPos = height - this.height;
+        tileSize = width / BOARDW;
+        setOutputSize();
+        setPosition(0, height - this.outputHeight);
         init();
     }
     GameBoard(int xPos, int yPos, int width){
-        this.xPos = xPos; this.yPos = yPos;
-        tileSize = width / boardW;
-        this.width = tileSize * boardW;
-        height = tileSize * (boardH + 1);
+        tileSize = width / BOARDW;
+        setOutputSize();
+        setPosition(xPos, yPos);
         init();
     }
     void setPosition(int xPos, int yPos){ this.xPos = xPos; this.yPos = yPos; }
+    void setOutputSize(){
+        this.outputWidth = tileSize * BOARDW;
+        this.outputHeight = tileSize * (BOARDH + 2);
+    }
     void init(){
         //Tile initialize.
         Tile.makeTileBitmap(tileSize);
+        //
+        Canvas canvas = new Canvas();
+        //control Bitmap.
+        b_Control = Bitmap.createBitmap(outputWidth, tileSize, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(b_Control);
+        Tools.resetBitmap(canvas, MyColor.hsvColor(30, 100, 100));
+        //Cursor Bitmap.
+        b_Cursor = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(b_Cursor);
+        Tools.resetBitmap(canvas, MyColor.RED);
+        int cursorWidth = tileSize / 15;
+        canvas.drawRect(cursorWidth, cursorWidth, tileSize - cursorWidth, tileSize - cursorWidth, Tools.colorPaint(0, true));
         //BitmapBoard.
-        b_Board = Bitmap.createBitmap(width, height + tileSize, Bitmap.Config.ARGB_8888);
+        b_Board = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888);
         c_Board = Tools.newCanvas(b_Board);
-        rect_S[RECT_TOP1] = new Rect(0, 0, width, tileSize);
+        rect_S[RECT_TOP1] = new Rect(0, 0, outputWidth, tileSize);
         (rect_S[RECT_TOP2] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, tileSize);
-        (rect_S[RECT_BOTTOM1] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, height - tileSize);
-        (rect_S[RECT_BOTTOM2] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, height);
-        rect_S[RECT_MIDDLE] = new Rect(0, 0, width, height);
+        (rect_S[RECT_BOTTOM1] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, outputHeight - tileSize * 2);
+        (rect_S[RECT_BOTTOM2] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, outputHeight - tileSize);
+        rect_S[RECT_MIDDLE] = new Rect(0, 0, outputWidth, outputHeight);
         //Tile allocate.
         Coord coord = new Coord(), coord1;
         coord.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
-        coord.setBorder(0, width, tileSize, height);
-        for (int x = 0; x < boardW; x++){
-            for (int y = 0; y < boardH; y++){
+        coord.setBorder(0, outputWidth, tileSize, tileSize * (BOARDH + 1));
+        for (int x = 0; x < BOARDW; x++){
+            for (int y = 0; y < BOARDH; y++){
                 coord1 = new Coord(coord).setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
                 Direction direction = null;
                 switch((int)(Math.random() * 4)){
@@ -110,10 +120,11 @@ public class GameBoard implements TimerAble, TouchEvent {
                 }
             }
         }
-        //TilePos Coord setting.
-        tilePos = new Coord();
-        tilePos.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CONSTRAINT);
-        tilePos.setBorder(0, boardW, 0, boardH + 1);
+        //cursorTilePos Coord setting.
+        cursorTilePos = new Coord();
+        cursorTilePos.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CONSTRAINT);
+        cursorTilePos.setBorder(0, BOARDW, 0, BOARDH + 1);
+        cursorTilePos.forceOut();
     }
     //canvas draw.
     //TimeCheck time_I = new TimeCheck();
@@ -128,8 +139,8 @@ public class GameBoard implements TimerAble, TouchEvent {
         c_Board.drawRect(rect_S[RECT_BOTTOM2], paint);
         //androidLog(String.format("GameBoard-draw-initialize: %5.2f", time_I.getTimeAv()));
         //time_D.reset();
-        for (int x = 0; x < boardW; x++){
-            for (int y = 0; y < boardH; y++){
+        for (int x = 0; x < BOARDW; x++){
+            for (int y = 0; y < BOARDH; y++){
                 tile_S[y][x].draw(c_Board);
             }
         }
@@ -140,12 +151,14 @@ public class GameBoard implements TimerAble, TouchEvent {
         c_Board.drawBitmap(b_Board, rect_S[RECT_BOTTOM1], rect_S[RECT_TOP1], null);
         c_Board.drawRect(rect_S[RECT_TOP1], Tools.colorPaint(MyColor.aColor(0x7f, MyColor.hsvColor(0, 80, 50))));
         //androidLog(String.format("GameBoard-draw-timeCycle: %5.2f", time_C.getTimeAv()));
+        if (!cursorTilePos.isOut()){ c_Board.drawBitmap(b_Cursor, cursorTilePos.getX() * tileSize, cursorTilePos.getY() * tileSize, null); }
+        c_Board.drawBitmap(b_Control, rect_S[RECT_TOP1], rect_S[RECT_BOTTOM2], null);
         //time_M.reset();
-        canvas.drawBitmap(b_Board, rect_S[RECT_MIDDLE], Tools.rectWH(xPos, yPos, width, height), null);
+        canvas.drawBitmap(b_Board, rect_S[RECT_MIDDLE], Tools.rectWH(xPos, yPos, outputWidth, outputHeight), null);
         //androidLog(String.format("GameBoard-draw-main: %5.2f", time_M.getTimeAv()));
     }
     //
-    int getTileY(Coord input){ return Tools.remainder(input.getY() - 1, boardH); }
+    int getTileY(Coord input){ return Tools.remainder(input.getY() - 1, BOARDH); }
     Tile getTile(Coord input){ return tile_S[getTileY(input)][input.getX()]; }
     void tileSwap(Coord input1, Coord input2){
         Tile temp = getTile(input1);
@@ -155,8 +168,8 @@ public class GameBoard implements TimerAble, TouchEvent {
     //timer, touch.
     @Override
     public void onTimer(int id, int sendNum) {
-        for (int x = 0; x < boardW; x++){
-            for (int y = 0; y < boardH; y++){
+        for (int x = 0; x < BOARDW; x++){
+            for (int y = 0; y < BOARDH; y++){
                 tile_S[y][x].onTimer(id, sendNum);
             }
         }
@@ -164,13 +177,24 @@ public class GameBoard implements TimerAble, TouchEvent {
 
     @Override
     public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
-        int loop1;
-        boolean flag;
         TouchInfo t_Info = null;
         Iterator<TouchInfo> it;
+        boolean flag;
+        Coord touchTilePos = new Coord(cursorTilePos);
         switch(touchInfo.action){
             case TouchInfo.DOWN:
                 touchInput.add(touchInfo);
+                touchTilePos.setPos((int) touchInfo.x / tileSize, (int) touchInfo.y / tileSize);
+                if (touchTilePos.isOut()){//touch control button
+
+                }
+                else {//select tile
+                    if (cursorTilePos.samePos(touchTilePos)){
+                        Tile tile = getTile(cursorTilePos);
+                        if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_R);
+                    }
+                    else { cursorTilePos = touchTilePos; }
+                }
                 break;
             case TouchInfo.UP:
                 //find first TouchInfo of touchInfo.id.
@@ -186,40 +210,14 @@ public class GameBoard implements TimerAble, TouchEvent {
                     }
                 }
                 if (flag){
-                    //save position.
-                    tilePos.setPos((int) t_Info.x / tileSize, (int) t_Info.y / tileSize);
-                    //process touch.
-                    int dx = Tools.floorByDiv((int)touchInfo.x, tileSize) / tileSize - tilePos.getX();
-                    int dy = Tools.floorByDiv((int)touchInfo.y, tileSize) / tileSize - tilePos.getY();
-                    Tile tile = getTile(tilePos);
-                    if (dx == 0 && dy == 0) {//rotate process.
-                        if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_L);
-                    } else if (dx == 0 || dy == 0) {//move process.
-                        //get direction.
-                        Direction di = new Direction(), diM;
-                        if (dx > 0) {
-                            di.set(Direction.R);
-                        } else if (dx < 0) {
-                            di.set(Direction.L);
-                        } else if (dy > 0) {
-                            di.set(Direction.D);
-                        } else {
-                            di.set(Direction.U);
-                        }
-                        diM = new Direction(di).mirror();
-                        //get movePos.
-                        Coord movePos = new Coord(tilePos);
-                        movePos.move(di);
-                        //process.
-                        if (!movePos.isOut()) {
-                            Tile moveTile = getTile(movePos);
-                            if (tile.processAble(di) && moveTile.processAble(diM)) {
-                                //tile can move.
-                                tile.startProcess(di);
-                                moveTile.startProcess(diM);
-                                tileSwap(tilePos, movePos);
-                            }
-                        }
+                    touchTilePos.setPos(
+                            Tools.floorByDiv((int)touchInfo.x, tileSize) / tileSize,
+                            Tools.floorByDiv((int)touchInfo.y, tileSize) / tileSize);
+                    if (!touchTilePos.isOut()){//touch out in tile.
+
+                    }
+                    else {
+                        //need control process
                     }
                 }
                 break;
@@ -524,10 +522,19 @@ class Coord{
     }
     int getX(){ return x; }
     int getY(){ return y; }
+    boolean samePos(Coord input){
+        if (this.isOut() || input.isOut()) return false;
+        return x == input.x && y == input.y;
+    }
     boolean isOut(){
         if (modeX == MODE_CONSTRAINT && x == bx2){ return true; }
         if (modeY == MODE_CONSTRAINT && y == by2){ return true; }
         return false;
+    }
+    Coord forceOut(){
+        if (modeX == MODE_CONSTRAINT){ x = bx2; }
+        if (modeY == MODE_CONSTRAINT){ y = by2; }
+        return this;
     }
     private void alignPos(){
         if (modeX == MODE_CYCLE){

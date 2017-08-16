@@ -37,7 +37,7 @@ public class GamePlay implements GameBase{
         dv_Width = gameMain.dv_CanvasWidth;
         dv_Height = gameMain.dv_CanvasHeight;
         gameBoard = new GameBoard(dv_Width, dv_Height);
-        gameBoardW = gameBoard.width; gameBoardH = gameBoard.height;
+        gameBoardW = gameBoard.outputWidth; gameBoardH = gameBoard.outputHeight;
         gameBoardMargin = dv_Height - gameBoardH;
     }
     @Override
