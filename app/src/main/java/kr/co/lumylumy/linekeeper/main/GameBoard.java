@@ -31,18 +31,26 @@ import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
 
 public class GameBoard implements TimerAble, TouchEvent {
     //
-    static final int BOARDW = 6, BOARDH= 8;
+    static final int BOARDW = 6, BOARDH= 6;
     //size.
     int xPos, yPos, outputWidth, outputHeight, tileSize;
+    int tileOutputHeight, controlPanelHeight;
     //tiles
     Tile[][] tile_S = new Tile[BOARDH][BOARDW];
     //Gameboard Bitmap.
     Bitmap b_Board;
     Canvas c_Board;
-    static final int RECT_TOP1 = 0, RECT_TOP2 = 1, RECT_BOTTOM1 = 2, RECT_BOTTOM2 = 3, RECT_MIDDLE = 4;
-    Rect[] rect_S = new Rect[5];
+    Rect r_Output;
+    //rect - for Board Cycle.
+    static final int RECT_CYCLETOP1 = 0, RECT_CYCLETOP2 = 1, RECT_CYCLEBOTTOM1 = 2, RECT_CYCLEBOTTOM2 = 3;
+    Rect[] rect_Cycle = new Rect[4];
+    //Control Bitmap, rect.
+    Bitmap b_Control;
+    static final int CONTROL_NUM = 6, CONTROL_ROTATEL = 0, CONTROL_ROTATER = 1, CONTROL_R = 2, CONTROL_U = 3, CONTROL_L = 4, CONTROL_D = 5;
+    Rect[] rect_Control = new Rect[CONTROL_NUM];
+    boolean[] controlState = new boolean[CONTROL_NUM];
     //other Bitmap.
-    Bitmap b_Control, b_Cursor;
+    Bitmap b_Cursor;
     //touchInput.
     ArrayList<TouchInfo> touchInput = new ArrayList<>();
     static final int TOUCHNUM_MAX = 3;
@@ -57,61 +65,77 @@ public class GameBoard implements TimerAble, TouchEvent {
     GameBoard(int width){ this(0, 0, width); }
     GameBoard(int width, int height){
         tileSize = width / BOARDW;
-        setOutputSize();
+        setSize();
         setPosition(0, height - this.outputHeight);
         init();
     }
     GameBoard(int xPos, int yPos, int width){
         tileSize = width / BOARDW;
-        setOutputSize();
+        setSize();
         setPosition(xPos, yPos);
         init();
     }
     void setPosition(int xPos, int yPos){ this.xPos = xPos; this.yPos = yPos; }
-    void setOutputSize(){
-        this.outputWidth = tileSize * BOARDW;
-        this.outputHeight = tileSize * (BOARDH + 2);
+    void setSize(){
+        tileOutputHeight = tileSize * (BOARDH + 1);
+        controlPanelHeight = tileSize * 2;
+        outputWidth = tileSize * BOARDW;
+        outputHeight = tileOutputHeight + controlPanelHeight;
+        r_Output = new Rect(0, 0, outputWidth, outputHeight);
+    }
+    void setTileCyclePanel(){
+        rect_Cycle[RECT_CYCLETOP1] = new Rect(0, 0, outputWidth, tileSize);
+        (rect_Cycle[RECT_CYCLETOP2] = new Rect(rect_Cycle[RECT_CYCLETOP1])).offsetTo(0, tileSize);
+        (rect_Cycle[RECT_CYCLEBOTTOM1] = new Rect(rect_Cycle[RECT_CYCLETOP1])).offsetTo(0, tileOutputHeight - tileSize);
+        (rect_Cycle[RECT_CYCLEBOTTOM2] = new Rect(rect_Cycle[RECT_CYCLETOP1])).offsetTo(0, tileOutputHeight);
+    }
+    void setControlPanel(){
+        Rect rect = new Rect(0, 0, tileSize, tileSize);
+        (rect_Control[CONTROL_ROTATEL] = new Rect(rect)).offsetTo(outputWidth - tileSize * 3, 0);
+        (rect_Control[CONTROL_ROTATER] = new Rect(rect)).offsetTo(outputWidth - tileSize, 0);
+        (rect_Control[CONTROL_U] = new Rect(rect)).offsetTo(outputWidth - tileSize * 2, 0);
+        (rect_Control[CONTROL_L] = new Rect(rect)).offsetTo(outputWidth - tileSize * 3, tileSize);
+        (rect_Control[CONTROL_D] = new Rect(rect)).offsetTo(outputWidth - tileSize * 2, tileSize);
+        (rect_Control[CONTROL_R] = new Rect(rect)).offsetTo(outputWidth - tileSize, tileSize);
+        Canvas canvas = new Canvas();
+        Matrix matrix = new Matrix();
+        b_Control = Bitmap.createBitmap(outputWidth, controlPanelHeight, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap_Arrow = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Bitmap bitmap_Rotate = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Bitmap frameBitmap = frameBitmap(tileSize, tileSize, MyColor.hsvColor(30, 100, 100));
+        canvas.setBitmap(bitmap_Arrow);
+        Tools.resetBitmap(canvas, MyColor.hsvColor(0, 0, 80));
+        canvas.drawBitmap(frameBitmap, 0, 0, null);
+        canvas.drawBitmap(arrowBitmap(tileSize, tileSize, MyColor.RED), 0, 0, null);
+        canvas.setBitmap(bitmap_Rotate);
+        Tools.resetBitmap(canvas, MyColor.hsvColor(0, 0, 80));
+        canvas.drawBitmap(frameBitmap, 0, 0, null);
+        canvas.drawBitmap(rotateArrowBitmap(tileSize, MyColor.RED), 0, 0, null);
+        canvas.setBitmap(b_Control);
+        Tools.resetBitmap(canvas, MyColor.WHITE);
+        canvas.drawBitmap(bitmap_Arrow, null, rect_Control[CONTROL_U], null);
+        matrix.setRotate(-90);
+        canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_L], null);
+        matrix.setRotate(-180);
+        canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_D], null);
+        matrix.setRotate(90);
+        canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_R], null);
+        canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_R], null);
+        canvas.drawBitmap(bitmap_Rotate, null, rect_Control[CONTROL_ROTATEL], null);
+        matrix.setScale(-1, 1);
+        canvas.drawBitmap(Bitmap.createBitmap(bitmap_Rotate, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_ROTATER], null);
     }
     void init(){
         //Tile initialize.
         Tile.makeTileBitmap(tileSize);
         //
-        Canvas canvas = new Canvas();
-        //control Bitmap.
-        {
-            Matrix matrix = new Matrix();
-            b_Control = Bitmap.createBitmap(outputWidth, tileSize, Bitmap.Config.ARGB_8888);
-            Bitmap bitmap_Arrow = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
-            Bitmap bitmap_Retry = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
-            Bitmap frameBitmap = frameBitmap(tileSize, tileSize, MyColor.hsvColor(30, 100, 100));
-            canvas.setBitmap(bitmap_Arrow);
-            canvas.drawBitmap(frameBitmap, 0, 0, null);
-            canvas.drawBitmap(arrowBitmap(tileSize, tileSize, MyColor.RED), 0, 0, null);
-            canvas.setBitmap(bitmap_Retry);
-            canvas.drawBitmap(frameBitmap, 0, 0, null);
-            canvas.drawBitmap(retryArrowBitmap(tileSize, MyColor.RED), 0, 0, null);
-            canvas.setBitmap(b_Control);
-            Tools.resetBitmap(canvas, MyColor.WHITE);
-            canvas.drawRect(outputWidth - tileSize * 5, 0, outputWidth, tileSize, Tools.colorPaint(MyColor.hsvColor(0, 0, 80)));
-            matrix.setRotate(-90);
-            canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), outputWidth - tileSize * 4, 0, null);
-            matrix.setRotate(-180);
-            canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), outputWidth - tileSize * 3, 0, null);
-            canvas.drawBitmap(bitmap_Arrow, outputWidth - tileSize * 2, 0, null);
-            matrix.setRotate(90);
-            canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), outputWidth - tileSize * 1, 0, null);
-            canvas.drawBitmap(bitmap_Retry, outputWidth - tileSize * 5, 0, null);
-            //Cursor Bitmap.
-            b_Cursor = frameBitmap(tileSize, tileSize, MyColor.RED);
-        }
+        setTileCyclePanel();
+        setControlPanel();
+        //Cursor Bitmap.
+        b_Cursor = frameBitmap(tileSize, tileSize, MyColor.RED);
         //BitmapBoard.
         b_Board = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888);
         c_Board = Tools.newCanvas(b_Board);
-        rect_S[RECT_TOP1] = new Rect(0, 0, outputWidth, tileSize);
-        (rect_S[RECT_TOP2] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, tileSize);
-        (rect_S[RECT_BOTTOM1] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, outputHeight - tileSize * 2);
-        (rect_S[RECT_BOTTOM2] = new Rect(rect_S[RECT_TOP1])).offsetTo(0, outputHeight - tileSize);
-        rect_S[RECT_MIDDLE] = new Rect(0, 0, outputWidth, outputHeight);
         //Tile allocate.
         Coord coord = new Coord(), coord1;
         coord.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
@@ -171,7 +195,7 @@ public class GameBoard implements TimerAble, TouchEvent {
         canvas.drawRect(marginX, marginY, width - marginX, height - marginY, Tools.colorPaint(0, true));
         return rValue;
     }
-    Bitmap retryArrowBitmap(int size, int color){
+    Bitmap rotateArrowBitmap(int size, int color){
         float middle = size / (float)2, quarter = size / (float)4, width_2 = size / 20;
         Bitmap rValue;
         Paint paint;
@@ -206,8 +230,8 @@ public class GameBoard implements TimerAble, TouchEvent {
         //time_I.reset();
         Paint paint = Tools.colorPaint(0, true);
         Tools.resetBitmap(c_Board ,MyColor.WHITE);
-        c_Board.drawRect(rect_S[RECT_TOP1], paint);
-        c_Board.drawRect(rect_S[RECT_BOTTOM2], paint);
+        c_Board.drawRect(rect_Cycle[RECT_CYCLETOP1], paint);
+        c_Board.drawRect(rect_Cycle[RECT_CYCLEBOTTOM2], paint);
         //androidLog(String.format("GameBoard-draw-initialize: %5.2f", time_I.getTimeAv()));
         //time_D.reset();
         for (int x = 0; x < BOARDW; x++){
@@ -217,15 +241,15 @@ public class GameBoard implements TimerAble, TouchEvent {
         }
         //androidLog(String.format("GameBoard-draw-tileDraw: %5.2f", time_D.getTimeAv()));
         //time_C.reset();
-        c_Board.drawBitmap(b_Board, rect_S[RECT_TOP1], rect_S[RECT_BOTTOM1], null);
-        c_Board.drawBitmap(b_Board, rect_S[RECT_BOTTOM2], rect_S[RECT_TOP2], null);
-        c_Board.drawBitmap(b_Board, rect_S[RECT_BOTTOM1], rect_S[RECT_TOP1], null);
-        c_Board.drawRect(rect_S[RECT_TOP1], Tools.colorPaint(MyColor.aColor(0x7f, MyColor.hsvColor(0, 80, 50))));
+        c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLETOP1], rect_Cycle[RECT_CYCLEBOTTOM1], null);
+        c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLEBOTTOM2], rect_Cycle[RECT_CYCLETOP2], null);
+        c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLEBOTTOM1], rect_Cycle[RECT_CYCLETOP1], null);
+        c_Board.drawRect(rect_Cycle[RECT_CYCLETOP1], Tools.colorPaint(MyColor.aColor(0x7f, MyColor.hsvColor(0, 80, 50))));
         //androidLog(String.format("GameBoard-draw-timeCycle: %5.2f", time_C.getTimeAv()));
         if (!cursorTilePos.isOut()){ c_Board.drawBitmap(b_Cursor, cursorTilePos.getX() * tileSize, cursorTilePos.getY() * tileSize, null); }
-        c_Board.drawBitmap(b_Control, rect_S[RECT_TOP1], rect_S[RECT_BOTTOM2], null);
+        c_Board.drawBitmap(b_Control, 0, tileOutputHeight, null);
         //time_M.reset();
-        canvas.drawBitmap(b_Board, rect_S[RECT_MIDDLE], Tools.rectWH(xPos, yPos, outputWidth, outputHeight), null);
+        canvas.drawBitmap(b_Board, r_Output, Tools.rectWH(xPos, yPos, outputWidth, outputHeight), null);
         //androidLog(String.format("GameBoard-draw-main: %5.2f", time_M.getTimeAv()));
     }
     //
@@ -259,33 +283,32 @@ public class GameBoard implements TimerAble, TouchEvent {
                 touchTilePos.setPos((int) touchInfo.x / tileSize, (int) touchInfo.y / tileSize);
                 if (touchTilePos.isOut()){//touch control button
                     if (!cursorTilePos.isOut()){
+                        Direction di = null, diM;
+                        Coord obPos;
                         tile = getTile(cursorTilePos);
-                        int x = (int) touchInfo.x / tileSize;
-                        if (x == 1){
+                        int x = (int) touchInfo.x, y = (int) touchInfo.y - tileOutputHeight;
+                        if (rect_Control[CONTROL_ROTATEL].contains(x, y)){
                             if (tile.processAble(Tile.P_ROTATE_L)) tile.startProcess(Tile.P_ROTATE_L);
                         }
-                        else {
-                            Direction di = null, diM;
-                            Coord obPos;
-                            switch(x){
-                                case 2: di = new Direction(Direction.L); break;
-                                case 3: di = new Direction(Direction.D); break;
-                                case 4: di = new Direction(Direction.U); break;
-                                case 5: di = new Direction(Direction.R); break;
-                            }
-                            if (di != null){
-                                obPos = new Coord(cursorTilePos);
-                                obPos.move(di);
-                                if (!obPos.isOut()){
-                                    diM = new Direction(di);
-                                    diM.mirror();
-                                    tile2 = getTile(obPos);
-                                    if (tile.processAble(di) && tile2.processAble(diM)){
-                                        tileSwap(cursorTilePos, obPos);
-                                        tile.startProcess(di);
-                                        tile2.startProcess(diM);
-                                        cursorTilePos = obPos;
-                                    }
+                        else if (rect_Control[CONTROL_ROTATER].contains(x, y)){
+                            if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_R);
+                        }
+                        else if (rect_Control[CONTROL_R].contains(x, y)){ di = new Direction(Direction.R); }
+                        else if (rect_Control[CONTROL_U].contains(x, y)){ di = new Direction(Direction.U); }
+                        else if (rect_Control[CONTROL_L].contains(x, y)){ di = new Direction(Direction.L); }
+                        else if (rect_Control[CONTROL_D].contains(x, y)){ di = new Direction(Direction.D); }
+                        if (di != null) {
+                            obPos = new Coord(cursorTilePos);
+                            obPos.move(di);
+                            if (!obPos.isOut()) {
+                                diM = new Direction(di);
+                                diM.mirror();
+                                tile2 = getTile(obPos);
+                                if (tile.processAble(di) && tile2.processAble(diM)) {
+                                    tileSwap(cursorTilePos, obPos);
+                                    tile.startProcess(di);
+                                    tile2.startProcess(diM);
+                                    cursorTilePos = obPos;
                                 }
                             }
                         }
@@ -298,6 +321,9 @@ public class GameBoard implements TimerAble, TouchEvent {
                     }
                     else { cursorTilePos = touchTilePos; }
                 }
+                break;
+            case TouchInfo.MOVE:
+                //process touch move.
                 break;
             case TouchInfo.UP:
                 //find first TouchInfo of touchInfo.id.
