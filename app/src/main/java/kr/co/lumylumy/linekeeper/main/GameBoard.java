@@ -22,7 +22,6 @@ import kr.co.lumylumy.linekeeper.tools.TouchInfo;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
 import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 
-import static android.R.attr.id;
 import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
 
 /**
@@ -48,18 +47,16 @@ public class GameBoard implements TimerAble, TouchEvent {
     Bitmap b_Control;
     static final int CONTROL_NUM = 6, CONTROL_ROTATEL = 0, CONTROL_ROTATER = 1, CONTROL_R = 2, CONTROL_U = 3, CONTROL_L = 4, CONTROL_D = 5;
     Rect[] rect_Control = new Rect[CONTROL_NUM];
-    boolean[] controlState = new boolean[CONTROL_NUM];
     //other Bitmap.
     Bitmap b_Cursor;
     //touchInput.
     ArrayList<TouchInfo> touchInput = new ArrayList<>();
-    static final int TOUCHNUM_MAX = 3;
-    int touchNum;
-    int[] touchId = new int[TOUCHNUM_MAX];
-    float[] touchX = new float[TOUCHNUM_MAX];
-    float[] touchY = new float[TOUCHNUM_MAX];
-    //
+    //static final int TOUCHNUM_MAX = 3;
+    //cursor.
     Coord cursorTilePos;
+    //sweepLine.
+    int sl_Pos = 0;
+    int sl_Speed, sl_Height, sl_CycleHeight;
 
     //constructor.
     GameBoard(int width){ this(0, 0, width); }
@@ -82,6 +79,9 @@ public class GameBoard implements TimerAble, TouchEvent {
         outputWidth = tileSize * BOARDW;
         outputHeight = tileOutputHeight + controlPanelHeight;
         r_Output = new Rect(0, 0, outputWidth, outputHeight);
+        sl_CycleHeight = tileSize * BOARDH;
+        sl_Height = tileSize / 5;
+        sl_Speed = tileSize / 40;
     }
     void setTileCyclePanel(){
         rect_Cycle[RECT_CYCLETOP1] = new Rect(0, 0, outputWidth, tileSize);
@@ -152,6 +152,8 @@ public class GameBoard implements TimerAble, TouchEvent {
                 }
                 switch((int)(Math.random() * 3)){
                     case 0:
+                        tile_S[y][x] = new Tile_STRAIGHT(direction, coord1);
+                        break;
                     case 1:
                         tile_S[y][x] = new TileA(direction, coord1);
                         break;
@@ -240,12 +242,14 @@ public class GameBoard implements TimerAble, TouchEvent {
             }
         }
         //androidLog(String.format("GameBoard-draw-tileDraw: %5.2f", time_D.getTimeAv()));
+        c_Board.drawRect(0, tileSize + sl_Pos - sl_Height, outputWidth, tileSize + sl_Pos, Tools.colorPaint(MyColor.aColor(0xdd, MyColor.BLUE)));
+        androidLog("asdfasdfasdf" + sl_Pos);
         //time_C.reset();
         c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLETOP1], rect_Cycle[RECT_CYCLEBOTTOM1], null);
         c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLEBOTTOM2], rect_Cycle[RECT_CYCLETOP2], null);
         c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLEBOTTOM1], rect_Cycle[RECT_CYCLETOP1], null);
         c_Board.drawRect(rect_Cycle[RECT_CYCLETOP1], Tools.colorPaint(MyColor.aColor(0x7f, MyColor.hsvColor(0, 80, 50))));
-        //androidLog(String.format("GameBoard-draw-timeCycle: %5.2f", time_C.getTimeAv()));
+        //androidLog(String.format("GameBoard-draw-tileCycle: %5.2f", time_C.getTimeAv()));
         if (!cursorTilePos.isOut()){ c_Board.drawBitmap(b_Cursor, cursorTilePos.getX() * tileSize, cursorTilePos.getY() * tileSize, null); }
         c_Board.drawBitmap(b_Control, 0, tileOutputHeight, null);
         //time_M.reset();
@@ -263,6 +267,8 @@ public class GameBoard implements TimerAble, TouchEvent {
     //timer, touch.
     @Override
     public void onTimer(int id, int sendNum) {
+        sl_Pos += sl_Speed * sendNum;
+        if (sl_Pos >= sl_CycleHeight) sl_Pos %= sl_CycleHeight;
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < BOARDH; y++){
                 tile_S[y][x].onTimer(id, sendNum);
@@ -355,6 +361,7 @@ abstract class Tile implements TimerAble{
     Direction direction = new Direction(Direction.R);
     //tilesize.
     static int tileSize = 0;
+    static int pipeWidth = 0;
     //
     boolean moveAble = true;
     //bitmap.
@@ -466,37 +473,91 @@ abstract class Tile implements TimerAble{
             if (p_Content == P_ROTATE_R) rotateValue = -p_Level;
         }
         switch(di){
-            case Direction.R: outBitmap = rotateBitmap[Tools.remainder(rotateValue, angle)];
+            case Direction.R: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL * 3 + rotateValue, angle)];
                 break;
-            case Direction.U: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL + rotateValue, angle)];
+            case Direction.U: outBitmap = rotateBitmap[Tools.remainder(rotateValue, angle)];
                 break;
-            case Direction.L: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL * 2 + rotateValue, angle)];
+            case Direction.L: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL + rotateValue, angle)];
                 break;
-            case Direction.D: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL * 3 + rotateValue, angle)];
+            case Direction.D: outBitmap = rotateBitmap[Tools.remainder(P_LEVEL * 2 + rotateValue, angle)];
                 break;
         }
     }
 
     //
+    static Bitmap[] makeRotateBitmap(Bitmap bitmap){
+        Bitmap[] bitmap_S = new Bitmap[P_LEVEL * 4];
+        Matrix matrix = new Matrix();
+        bitmap_S[0] = Bitmap.createBitmap(bitmap);
+        for (int loop1 = 1; loop1 < bitmap_S.length; loop1++){
+            matrix.setRotate(-(float)360 * loop1 / bitmap_S.length);
+            bitmap_S[loop1] = Bitmap.createBitmap(bitmap_S[0], 0, 0, tileSize, tileSize, matrix, false);
+        }
+        return bitmap_S;
+    }
     abstract Bitmap[] getRotateBitmap();
     //isConnect.
-    abstract boolean isConnect(int input, int output);
+    abstract boolean isConnect(Direction input, Direction output);
 
     //initialize Tile Bitmap.
     static void makeTileBitmap(int tileSize){
         Tile.tileSize = tileSize;
+        pipeWidth = tileSize / 5;
         moveSpeed = tileSize / P_LEVEL;
         TileA.makeTileBitmap();
         TileB.makeTileBitmap();
+        Tile_STRAIGHT.makeTileBitmap();
+    }
+}
+//example of tile.
+/*
+class Tile_EX extends Tile{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_EX(Direction direction, Coord pos){ super(direction, pos); }//constructor.
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    boolean isConnect(Direction input, Direction output) {
+        //overriding tile's pipe.
+        return false;
+    }
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        //draw tile bitmap (Direction U)
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+}
+*/
+
+class Tile_STRAIGHT extends Tile{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_STRAIGHT(Direction direction, Coord pos){ super(direction, pos); }//constructor.
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    boolean isConnect(Direction input, Direction output) {
+        Direction temp = new Direction(output);
+        return !isProcessing && input.get() == temp.mirror().get() && (direction.get() == input.get() || direction.get() == output.get());
+    }
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        //draw tile bitmap (Direction U)
+        Tools.resetBitmap(canvas, MyColor.hsvColor(24, 100, 80));
+        canvas.drawRect((tileSize - pipeWidth) / (float)2, 0, (tileSize + pipeWidth) / (float)2, tileSize ,Tools.colorPaint(0, true));
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
 }
 
-class TileA extends Tile{ //Straight Line.
+//tile for test.
+class TileA extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S = new Bitmap[Tile.P_LEVEL * 4];
     TileA(Direction direction, Coord pos){ super(direction, pos); }
     @Override
-    boolean isConnect(int input, int output) {
+    boolean isConnect(Direction input, Direction output) {
         return false;
     }
     @Override
@@ -516,13 +577,12 @@ class TileA extends Tile{ //Straight Line.
         }
     }
 }
-
-class TileB extends Tile{ //Straight Line.
+class TileB extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S = new Bitmap[Tile.P_LEVEL * 4];
     TileB(Direction direction, Coord pos){ super(direction, pos); }
     @Override
-    boolean isConnect(int input, int output) {
+    boolean isConnect(Direction input, Direction output) {
         return false;
     }
     @Override
@@ -542,6 +602,7 @@ class TileB extends Tile{ //Straight Line.
         }
     }
 }
+
 
 class Direction{
     static final int R = 0, UR = 1, U = 2, UL = 3, L = 4, DL = 5, D = 6, DR = 7;
