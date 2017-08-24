@@ -22,10 +22,12 @@ import kr.co.lumylumy.linekeeper.timer.TimerAble;
 
 public class Tools {
     static DisplayMetrics displayMetrics;
+    static Context context;
 
     //Tools_initial
     public static void tools_initial(AppCompatActivity input){
         dipToPixInit(input.getResources().getDisplayMetrics());
+        simpleToastInit(input.getApplicationContext());
     }
     //dipToPix
     public static void dipToPixInit(DisplayMetrics input){
@@ -38,6 +40,9 @@ public class Tools {
         return (float)0;
     }
     //Toast.
+    public static void simpleToastInit(Context context){ Tools.context = context;}
+    public static void simpleToast(String str){ if (context != null) simpleToast(context, str);}
+    public static void simpleToast(String str, int time){ if (context != null) simpleToast(context, str, time); }
     public static void simpleToast(Context context, String str){
         Toast.makeText(context, str, Toast.LENGTH_SHORT).show();
     }
