@@ -54,10 +54,10 @@ public class GameBoard implements TimerAble, TouchEvent {
     //static final int TOUCHNUM_MAX = 3;
     //cursor.
     Coord cursorTilePos;
+    //
+    Coord tileInternalPosEx;
     //sweepLine.
     SweepLine sweepLine;
-    int sl_Pos = 0;
-    int sl_Speed, sl_Height, sl_CycleHeight;
 
     //constructor.
     GameBoard(int width){ this(0, 0, width); }
@@ -137,30 +137,11 @@ public class GameBoard implements TimerAble, TouchEvent {
         b_Board = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888);
         c_Board = Tools.newCanvas(b_Board);
         //Tile allocate.
-        Coord coord = new Coord(), coord1;
-        coord.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
-        coord.setBorder(0, outputWidth, tileSize, tileSize * (BOARDH + 1));
+        tileInternalPosEx = new Coord(0, 0, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
+        tileInternalPosEx.setBorder(0, outputWidth, tileSize, tileSize * (BOARDH + 1));
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < BOARDH; y++){
-                coord1 = new Coord(coord).setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
-                Direction direction = null;
-                switch((int)(Math.random() * 4)){
-                    case 0: direction = new Direction(Direction.R); break;
-                    case 1: direction = new Direction(Direction.U); break;
-                    case 2: direction = new Direction(Direction.L); break;
-                    case 3: direction = new Direction(Direction.D); break;
-                }
-                switch((int)(Math.random() * 3)){
-                    case 0:
-                        tile_S[y][x] = new Tile_STRAIGHT(direction, coord1);
-                        break;
-                    case 1:
-                        tile_S[y][x] = new TileA(direction, coord1);
-                        break;
-                    case 2:
-                        tile_S[y][x] = new TileB(direction, coord1);
-                        break;
-                }
+                tileAllocate(x, y);
             }
         }
         //cursorTilePos Coord setting.
@@ -168,6 +149,30 @@ public class GameBoard implements TimerAble, TouchEvent {
         cursorTilePos.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CONSTRAINT);
         cursorTilePos.setBorder(0, BOARDW, 0, BOARDH + 1);
         cursorTilePos.forceOut();
+    }
+    void tileAllocate(int x, int y){
+        if (0 <= x && x < BOARDW && 0 <= y && y < BOARDH){
+            Coord coord = new Coord(tileInternalPosEx);
+            coord.setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
+            Direction direction = null;
+            switch((int)(Math.random() * 4)){
+                case 0: direction = new Direction(Direction.R); break;
+                case 1: direction = new Direction(Direction.U); break;
+                case 2: direction = new Direction(Direction.L); break;
+                case 3: direction = new Direction(Direction.D); break;
+            }
+            switch((int)(Math.random() * 3)){
+                case 0:
+                    tile_S[y][x] = new Tile_STRAIGHT(direction, coord);
+                    break;
+                case 1:
+                    tile_S[y][x] = new TileA(direction, coord);
+                    break;
+                case 2:
+                    tile_S[y][x] = new TileB(direction, coord);
+                    break;
+            }
+        }
     }
     Bitmap arrowBitmap(int width, int height, int color){
         int arrowWidth = width / 10, width_2 = width / 2;
@@ -271,7 +276,9 @@ public class GameBoard implements TimerAble, TouchEvent {
     //timer, touch.
     @Override
     public void onTimer(int id, int sendNum) {
-        sweepLine.processMain(sendNum);
+        if (sweepLine.processMain(sendNum)){
+            //game over.
+        }
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < BOARDH; y++){
                 tile_S[y][x].onTimer(id, sendNum);
@@ -362,33 +369,92 @@ public class GameBoard implements TimerAble, TouchEvent {
 class SweepLine{
     //gameBoard.
     GameBoard gameBoard;
+    int tileSize;
+    //
+    int alphaValue = 0xdd;
     //sweepLine property.
-    int position = 0;
-    int speed, height, cycleHeight;
-    //save the sendNum(how many game ticks have to processing.)
-    int processNum;
+    double position = 0d, speed;
+    Coord tilePosition, restrictTilePosition;
+    int height, cycleHeight;
+    //restrictTile's Bitmap
+    Bitmap b_RestrictTile;
 
     //constructor.
     SweepLine(GameBoard input){
         gameBoard = input;
-        cycleHeight = gameBoard.tileSize * gameBoard.BOARDH;
-        height = gameBoard.tileSize / 5;
-        speed = gameBoard.tileSize / 40;
+        tileSize = gameBoard.tileSize;
+        tilePosition = new Coord(0, 0, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
+        tilePosition.setBorder(0, GameBoard.BOARDW, 0, GameBoard.BOARDH);
+        restrictTilePosition = new Coord(tilePosition);
+        restrictTilePosition.setPos(0, GameBoard.BOARDH - 1);
+        cycleHeight = tileSize * GameBoard.BOARDH;
+        height = tileSize / 5;
+        speed = (double)tileSize / 120;
+        initBitmap();
+    }
+    void initBitmap(){
+        int gradientWidth = tileSize / 8;//not real Size.
+        int[] color = new int[]{0, 0, MyColor.aColor(alphaValue, MyColor.BLACK)};
+        float[] gradientPos = new float[]{0f, 0.7f, 1f};
+        Paint paint = new Paint();
+        paint.setShader(new LinearGradient(0, 0, gradientWidth, gradientWidth, color, gradientPos, Shader.TileMode.MIRROR));
+        b_RestrictTile = Bitmap.createBitmap(gameBoard.outputWidth, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(b_RestrictTile);
+        canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), paint);
     }
     //drawing.
     void draw(Canvas canvas, int margin){
-        canvas.drawRect(0, margin + position - height, gameBoard.outputWidth, margin + position, Tools.colorPaint(MyColor.aColor(0xdd, MyColor.BLUE)));
+        canvas.drawBitmap(b_RestrictTile, 0, margin + restrictTilePosition.getY() * tileSize, null);
+        canvas.drawRect(0, margin + (int)position - height,
+                gameBoard.outputWidth, margin + (int)position,
+                Tools.colorPaint(MyColor.aColor(alphaValue, MyColor.BLUE)));
     }
     //entry of process.
-    void processMain(int sendNum){
-        processNum = sendNum;
-        moveLine();
+    boolean processMain(int sendNum){
+        return moveLine(sendNum);
     }
     //
-    boolean moveLine(){
+    boolean moveLine(int processNum){
+        //processNum = how many game ticks have to processing.
+        int tileProcessNum;//how many game tiles have to processing.
         position += speed * processNum;
-        if (position >= cycleHeight) position %= cycleHeight;
+        tileProcessNum = (int)position / tileSize - tilePosition.getY();
+        if (position >= cycleHeight) position = (double)((int)position % cycleHeight);
+        if (processTile(tileProcessNum)) return true;//Die, game over.
+        processLine();
         return false;
+    }
+    boolean processTile(int tileProcessNum){
+        for (int processNum = 0; processNum < tileProcessNum; processNum++){
+            int tileY = tilePosition.getY();
+            //force close Tile's processing first.
+            for (int tileX = 0; tileX < GameBoard.BOARDW; tileX++){
+                gameBoard.tile_S[tileY][tileX].forceCloseProcess();
+            }
+            //processLine.
+            if (!processLine()) return true;//Die, game over.
+            //generate new Tile.
+            newTile();
+            //set Tile restrict.
+            for (int tileX = 0; tileX < GameBoard.BOARDW; tileX++){
+                gameBoard.tile_S[tileY][tileX].moveAble = false;
+            }
+            //move to next line.
+            restrictTilePosition = tilePosition;
+            tilePosition = new Coord(tilePosition).move(new Direction(Direction.D));
+        }
+        return false;//NOT game over.
+    }
+    boolean processLine(){
+        boolean isConnect = false;
+        //return isConnect;
+        return true;
+    }
+    void newTile(){
+        int tileY = restrictTilePosition.getY();
+        for (int tileX = 0; tileX < GameBoard.BOARDW; tileX++){
+            gameBoard.tileAllocate(tileX, tileY);
+        }
     }
 }
 
@@ -397,11 +463,11 @@ abstract class Tile implements TimerAble{
     Direction direction = new Direction(Direction.R);
     //tilesize.
     static int tileSize = 0;
-    static int pipeWidth = 0;
+    static int LineWidth = 0;
     //
     boolean moveAble = true;
     //
-    boolean pipeOn = false;
+    boolean LineOn = false;
     //bitmap.
     Bitmap outBitmap;
     Bitmap[] rotateBitmap;
@@ -507,7 +573,7 @@ abstract class Tile implements TimerAble{
         }
     }
     void draw(Canvas canvas){
-        if (pipeOn){
+        if (LineOn){
             canvas.drawRect(Tools.rectWH(pos.getX() - tileSize / 2, pos.getY() - tileSize / 2, tileSize, tileSize), Tools.colorPaint(MyColor.BLUE));
         }
         canvas.drawBitmap(outBitmap, pos.getX() - outBitmap.getWidth() / 2, pos.getY() - outBitmap.getHeight() / 2, null);
@@ -549,7 +615,7 @@ abstract class Tile implements TimerAble{
     //initialize Tile Bitmap.
     static void makeTileBitmap(int tileSize){
         Tile.tileSize = tileSize;
-        pipeWidth = tileSize / 5;
+        LineWidth = tileSize / 5;
         moveSpeed = tileSize / P_LEVEL;
         TileA.makeTileBitmap();
         TileB.makeTileBitmap();
@@ -566,7 +632,7 @@ class Tile_EX extends Tile{
     Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
     @Override
     boolean isConnect(Direction input, Direction output) {
-        //overriding tile's pipe.
+        //overriding tile's Line.
         return false;
     }
     static void makeTileBitmap(){
@@ -593,7 +659,7 @@ class Tile_STRAIGHT extends Tile{
         Canvas canvas = Tools.newCanvas(tileBitmap);
         //draw tile bitmap (Direction U)
         Tools.resetBitmap(canvas, MyColor.hsvColor(24, 100, 80));
-        canvas.drawRect((tileSize - pipeWidth) / (float)2, 0, (tileSize + pipeWidth) / (float)2, tileSize ,Tools.colorPaint(0, true));
+        canvas.drawRect((tileSize - LineWidth) / (float)2, 0, (tileSize + LineWidth) / (float)2, tileSize ,Tools.colorPaint(0, true));
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
 }
@@ -719,6 +785,8 @@ class Coord{
         alignPos();
         return this;
     }
+    Coord setPosX(int x){ return setPos(x, y); }
+    Coord setPosY(int y){ return setPos(x, y); }
     Coord setPos(int x, int y){
         this.x = x; this.y = y;
         alignPos();
