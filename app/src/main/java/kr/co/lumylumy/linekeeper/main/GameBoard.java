@@ -55,6 +55,7 @@ public class GameBoard implements TimerAble, TouchEvent {
     //cursor.
     Coord cursorTilePos;
     //sweepLine.
+    SweepLine sweepLine;
     int sl_Pos = 0;
     int sl_Speed, sl_Height, sl_CycleHeight;
 
@@ -79,9 +80,6 @@ public class GameBoard implements TimerAble, TouchEvent {
         outputWidth = tileSize * BOARDW;
         outputHeight = tileOutputHeight + controlPanelHeight;
         r_Output = new Rect(0, 0, outputWidth, outputHeight);
-        sl_CycleHeight = tileSize * BOARDH;
-        sl_Height = tileSize / 5;
-        sl_Speed = tileSize / 40;
     }
     void setTileCyclePanel(){
         rect_Cycle[RECT_CYCLETOP1] = new Rect(0, 0, outputWidth, tileSize);
@@ -128,6 +126,8 @@ public class GameBoard implements TimerAble, TouchEvent {
     void init(){
         //Tile initialize.
         Tile.makeTileBitmap(tileSize);
+        //sweepLine.
+        sweepLine = new SweepLine(this);
         //
         setTileCyclePanel();
         setControlPanel();
@@ -238,12 +238,16 @@ public class GameBoard implements TimerAble, TouchEvent {
         //time_D.reset();
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < BOARDH; y++){
-                tile_S[y][x].draw(c_Board);
+                if (!tile_S[y][x].isProcessing) tile_S[y][x].draw(c_Board);
+            }
+        }
+        for (int x = 0; x < BOARDW; x++){
+            for (int y = 0; y < BOARDH; y++){
+                if (tile_S[y][x].isProcessing) tile_S[y][x].draw(c_Board);
             }
         }
         //androidLog(String.format("GameBoard-draw-tileDraw: %5.2f", time_D.getTimeAv()));
-        c_Board.drawRect(0, tileSize + sl_Pos - sl_Height, outputWidth, tileSize + sl_Pos, Tools.colorPaint(MyColor.aColor(0xdd, MyColor.BLUE)));
-        androidLog("asdfasdfasdf" + sl_Pos);
+        sweepLine.draw(c_Board, tileSize);
         //time_C.reset();
         c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLETOP1], rect_Cycle[RECT_CYCLEBOTTOM1], null);
         c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLEBOTTOM2], rect_Cycle[RECT_CYCLETOP2], null);
@@ -267,8 +271,7 @@ public class GameBoard implements TimerAble, TouchEvent {
     //timer, touch.
     @Override
     public void onTimer(int id, int sendNum) {
-        sl_Pos += sl_Speed * sendNum;
-        if (sl_Pos >= sl_CycleHeight) sl_Pos %= sl_CycleHeight;
+        sweepLine.processMain(sendNum);
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < BOARDH; y++){
                 tile_S[y][x].onTimer(id, sendNum);
@@ -356,6 +359,39 @@ public class GameBoard implements TimerAble, TouchEvent {
     }
 }
 
+class SweepLine{
+    //gameBoard.
+    GameBoard gameBoard;
+    //sweepLine property.
+    int position = 0;
+    int speed, height, cycleHeight;
+    //save the sendNum(how many game ticks have to processing.)
+    int processNum;
+
+    //constructor.
+    SweepLine(GameBoard input){
+        gameBoard = input;
+        cycleHeight = gameBoard.tileSize * gameBoard.BOARDH;
+        height = gameBoard.tileSize / 5;
+        speed = gameBoard.tileSize / 40;
+    }
+    //drawing.
+    void draw(Canvas canvas, int margin){
+        canvas.drawRect(0, margin + position - height, gameBoard.outputWidth, margin + position, Tools.colorPaint(MyColor.aColor(0xdd, MyColor.BLUE)));
+    }
+    //entry of process.
+    void processMain(int sendNum){
+        processNum = sendNum;
+        moveLine();
+    }
+    //
+    boolean moveLine(){
+        position += speed * processNum;
+        if (position >= cycleHeight) position %= cycleHeight;
+        return false;
+    }
+}
+
 abstract class Tile implements TimerAble{
     //direction.
     Direction direction = new Direction(Direction.R);
@@ -364,6 +400,8 @@ abstract class Tile implements TimerAble{
     static int pipeWidth = 0;
     //
     boolean moveAble = true;
+    //
+    boolean pipeOn = false;
     //bitmap.
     Bitmap outBitmap;
     Bitmap[] rotateBitmap;
@@ -403,6 +441,7 @@ abstract class Tile implements TimerAble{
     boolean processAble(Direction direction){
         if (isProcessing) return false;
         if (direction.get() % 2 == 1) return false;
+        if (!moveAble) return false;
         Coord movePos = new Coord(pos);
         return !movePos.move(direction).isOut();
     }
@@ -410,6 +449,7 @@ abstract class Tile implements TimerAble{
         switch (content) {
             case P_ROTATE_R:
             case P_ROTATE_L:
+                if (!moveAble || isProcessing) return;
                 isProcessing = true;
                 p_Content = content;
                 p_Level = 0;
@@ -422,6 +462,7 @@ abstract class Tile implements TimerAble{
     }
     void startProcess(Direction direction){
         boolean ableDirection = false;
+        if (!moveAble || isProcessing) return;
         switch(direction.get()){
             case Direction.R: p_Content = P_RIGHT; ableDirection = true;
                 break;
@@ -439,6 +480,7 @@ abstract class Tile implements TimerAble{
             p_Level = 0;
         }
     }
+    void forceCloseProcess(){ onTimer(0, P_LEVEL); }
     @Override
     public void onTimer(int id, int sendNum) {
         if (isProcessing) {
@@ -464,7 +506,12 @@ abstract class Tile implements TimerAble{
             }
         }
     }
-    void draw(Canvas canvas){ canvas.drawBitmap(outBitmap, pos.getX() - outBitmap.getWidth() / 2, pos.getY() - outBitmap.getHeight() / 2, null); }
+    void draw(Canvas canvas){
+        if (pipeOn){
+            canvas.drawRect(Tools.rectWH(pos.getX() - tileSize / 2, pos.getY() - tileSize / 2, tileSize, tileSize), Tools.colorPaint(MyColor.BLUE));
+        }
+        canvas.drawBitmap(outBitmap, pos.getX() - outBitmap.getWidth() / 2, pos.getY() - outBitmap.getHeight() / 2, null);
+    }
     void directionToBitmap(){
         int di = direction.get();
         int rotateValue = 0, angle = P_LEVEL * 4;
@@ -496,7 +543,7 @@ abstract class Tile implements TimerAble{
         return bitmap_S;
     }
     abstract Bitmap[] getRotateBitmap();
-    //isConnect.
+    //Connect Check.
     abstract boolean isConnect(Direction input, Direction output);
 
     //initialize Tile Bitmap.

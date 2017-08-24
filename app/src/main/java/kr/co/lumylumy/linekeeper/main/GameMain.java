@@ -22,10 +22,12 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 /*
 ---Job List---
 DEV.
-    GameBoard - 터치로 타일 움직일 때 길게 움직이는 기능 추가.
-    Tile - isProcessing인 타일이 그렇지 않은 타일보다 위에 그려지도록 하기.
+    sweepLine's pipe conntect Processing.
+    make many type of tile (extends Tile Class).
+    make image of tile.
     이미지를 resource폴더에 넣어두고 로드하기.
         --->이미지가 apk에서 바로 보이지 않도록 간단한 변환을 한 뒤 저장, 불러올때 변환 제거하고 Bitmap으로 변환.
+    cursorTilePos 또한 Cycle을 가지도록 하기.
     GameBoard - 이후 계속 개발.
 DEBUG.
     ?
