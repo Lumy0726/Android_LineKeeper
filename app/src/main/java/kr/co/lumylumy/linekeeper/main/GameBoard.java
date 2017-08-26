@@ -423,8 +423,6 @@ class SweepLine {
     double position, speed;
     Coord tilePosition, restrictTilePosition;
     int height, cycleHeight;
-    //restrictTile's Bitmap
-    Bitmap b_RestrictTile;
 
     //constructor.
     SweepLine(GameBoard input){
@@ -438,21 +436,9 @@ class SweepLine {
         height = tileSize / 5;
         speed = (double)tileSize / 120;
         position = (double)(height + 1);
-        initBitmap();
-    }
-    void initBitmap(){
-        int gradientWidth = tileSize / 8;//not real Size.
-        int[] color = new int[]{0, 0, MyColor.aColor(alphaValue, MyColor.BLACK)};
-        float[] gradientPos = new float[]{0f, 0.7f, 1f};
-        Paint paint = new Paint();
-        paint.setShader(new LinearGradient(0, 0, gradientWidth, gradientWidth, color, gradientPos, Shader.TileMode.MIRROR));
-        b_RestrictTile = Bitmap.createBitmap(gameBoard.outputWidth, tileSize, Bitmap.Config.ARGB_8888);
-        Canvas canvas = Tools.newCanvas(b_RestrictTile);
-        canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), paint);
     }
     //drawing.
     void draw(Canvas canvas, int margin){
-        canvas.drawBitmap(b_RestrictTile, 0, margin + restrictTilePosition.getY() * tileSize, null);
         canvas.drawRect(0, margin + (int)position - height,
                 gameBoard.outputWidth, margin + (int)position,
                 Tools.colorPaint(MyColor.aColor(alphaValue, MyColor.BLUE)));

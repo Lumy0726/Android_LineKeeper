@@ -22,12 +22,14 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 /*
 ---Job List---
 DEV.
-    sweepLine's pipe conntect Processing.
+    Line Connecting이 모든 타일에까지 연결되어 보이도록 처리하기.
+    cursorTilePos 또한 Cycle을 가지도록 하기.
     make many type of tile (extends Tile Class).
+        moveAble이 false인 것들 + 그것들의 출력 다르게하기.
+    점수, 난이도 기능 추가하기.
     make image of tile.
     이미지를 resource폴더에 넣어두고 로드하기.
         --->이미지가 apk에서 바로 보이지 않도록 간단한 변환을 한 뒤 저장, 불러올때 변환 제거하고 Bitmap으로 변환.
-    cursorTilePos 또한 Cycle을 가지도록 하기.
     GameBoard - 이후 계속 개발.
 DEBUG.
     ?

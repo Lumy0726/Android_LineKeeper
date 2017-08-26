@@ -25,6 +25,8 @@ abstract class Tile implements TimerAble {
     //tilesize.
     static int tileSize = 0;
     static int LineWidth = 0;
+    //if moveAble is false, draw this.
+    static Bitmap b_UnAbleMove;
     //connect
     boolean lineR = false, lineU = false, lineL = false, lineD = false;
     boolean mustConnect = false;
@@ -46,12 +48,13 @@ abstract class Tile implements TimerAble {
     //constructor.
     Tile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){
         this.tileUpdateClass = tileUpdateClass;
-        this.pos = pos;
+        this.pos = new Coord(pos);
         int di = direction.get();
         //this.drection's default value is R.
         if (di == Direction.U || di == Direction.L || di == Direction.D) tileDirection.set(di);
         rotateBitmap = getRotateBitmap();
         directionToBitmap();
+        mustConnect = false;
     }
 
     //graphic process.
@@ -144,6 +147,7 @@ abstract class Tile implements TimerAble {
     void draw(Canvas canvas){
         drawLine(canvas);
         canvas.drawBitmap(outBitmap, pos.getX() - outBitmap.getWidth() / 2, pos.getY() - outBitmap.getHeight() / 2, null);
+        if (!moveAble) canvas.drawBitmap(b_UnAbleMove, pos.getX() - tileSize / 2, pos.getY() - tileSize / 2, null);
     }
     abstract void drawLine(Canvas canvas);
     void directionToBitmap(){
@@ -185,9 +189,26 @@ abstract class Tile implements TimerAble {
 
     //initialize Tile Bitmap.
     static void makeTileBitmap(int tileSize){
+        //size, speed.
         Tile.tileSize = tileSize;
         LineWidth = tileSize / 5;
         moveSpeed = tileSize / P_LEVEL;
+        //b_UnAbleMove.
+        {
+            float gradientWidth = tileSize / (float)8;
+            int[] color = new int[]{0, 0, MyColor.aColor(0xdd, MyColor.BLACK)};
+            float[] gradientPos = new float[]{0f, 0.7f, 1f};
+            b_UnAbleMove = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+            Paint paint = new Paint();
+            paint.setShader(
+                    new LinearGradient(0, 0,
+                            gradientWidth, gradientWidth,
+                            color, gradientPos,
+                            Shader.TileMode.MIRROR)
+            );
+            Tools.newCanvas(b_UnAbleMove).drawRect(0, 0, tileSize, tileSize, paint);
+        }
+        //Tile's Bitmap.
         TileA.makeTileBitmap();
         TileB.makeTileBitmap();
         Tile_STRAIGHT.makeTileBitmap();
@@ -200,7 +221,7 @@ class Tile_EX extends Tile{
     static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
     Tile_EX(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){//constructor.
         super(tileUpdateClass, direction, pos);
-        mustConnect = true;//set whether require connecting.
+        mustConnect = true;//set whether require connecting(optional).
     }
     @Override
     void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
@@ -237,10 +258,7 @@ class Tile_EX extends Tile{
 class Tile_STRAIGHT extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
-    Tile_STRAIGHT(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){//constructor.
-        super(tileUpdateClass, direction, pos);
-        mustConnect = false;//set whether require connecting.
-    }
+    Tile_STRAIGHT(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){ super(tileUpdateClass, direction, pos); }
     @Override
     void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
         if (!isProcessing && isConnectAll()){
