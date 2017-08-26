@@ -12,6 +12,7 @@ import android.view.MotionEvent;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
 
 import kr.co.lumylumy.linekeeper.log.LogSystem;
 import kr.co.lumylumy.linekeeper.timer.TimeCheck;
@@ -28,7 +29,7 @@ import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
  * Created by LMJ on 2017-08-12.
  */
 
-public class GameBoard implements TimerAble, TouchEvent {
+public class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
     //
     static final int BOARDW = 6, BOARDH= 6;
     //size.
@@ -58,6 +59,7 @@ public class GameBoard implements TimerAble, TouchEvent {
     Coord tileInternalPosEx;
     //sweepLine.
     SweepLine sweepLine;
+    boolean needLineUpdate;
 
     //constructor.
     GameBoard(int width){ this(0, 0, width); }
@@ -128,6 +130,7 @@ public class GameBoard implements TimerAble, TouchEvent {
         Tile.makeTileBitmap(tileSize);
         //sweepLine.
         sweepLine = new SweepLine(this);
+        needLineUpdate = true;
         //
         setTileCyclePanel();
         setControlPanel();
@@ -143,14 +146,15 @@ public class GameBoard implements TimerAble, TouchEvent {
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < startY; y++){
                 if (x == 0){
-                    tile_S[y][x] = new Tile_STRAIGHT(
+                    tile_S[y][0] = new Tile_STRAIGHT(
+                            this,
                             new Direction(Direction.U),
-                            new Coord(tileInternalPosEx).setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2)
+                            new Coord(tileInternalPosEx).setPos(tileSize / 2, (y + 1) * tileSize + tileSize / 2)
                     );
-                    tile_S[y][x].sendLineState = true;
                 }
                 else {
                     tile_S[y][x] = new TileA(
+                            this,
                             new Direction(Direction.U),
                             new Coord(tileInternalPosEx).setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2)
                     );
@@ -158,6 +162,7 @@ public class GameBoard implements TimerAble, TouchEvent {
                 tile_S[y][x].moveAble = false;
             }
         }
+        tile_S[0][0].lineFlow(new Direction(Direction.U));//startTile.
         for (int x = 0; x < BOARDW; x++){
             for (int y = 2; y < BOARDH; y++){
                 tileAllocate(x, y);
@@ -182,17 +187,27 @@ public class GameBoard implements TimerAble, TouchEvent {
             }
             switch((int)(Math.random() * 3)){
                 case 0:
-                    tile_S[y][x] = new Tile_STRAIGHT(direction, coord);
+                    tile_S[y][x] = new Tile_STRAIGHT(this, direction, coord);
                     break;
                 case 1:
-                    tile_S[y][x] = new TileA(direction, coord);
+                    tile_S[y][x] = new TileA(this, direction, coord);
                     break;
                 case 2:
-                    tile_S[y][x] = new TileB(direction, coord);
+                    tile_S[y][x] = new TileB(this, direction, coord);
                     break;
             }
         }
     }
+    void startTileAllocate(int x, int y){
+        if (0 <= x && x < BOARDW && 0 <= y && y < BOARDH){
+            Coord coord = new Coord(tileInternalPosEx);
+            coord.setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
+            tile_S[y][x] = new Tile_STRAIGHT(this, new Direction(Direction.U), coord);
+            tile_S[y][x].lineFlow(new Direction(Direction.U));
+        }
+    }
+
+    //some Bitmap drawing method.
     Bitmap arrowBitmap(int width, int height, int color){
         int arrowWidth = width / 10, width_2 = width / 2;
         Bitmap rValue = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
@@ -301,15 +316,21 @@ public class GameBoard implements TimerAble, TouchEvent {
             sweepLine.newTile();
             sweepLine.tilePosition.setPosY((int)sweepLine.position / tileSize);
             sweepLine.restrictTilePosition.setPosY((int)sweepLine.position / tileSize - 1);
+            sweepLine.newTile();
+            startTileAllocate(0, sweepLine.restrictTilePosition.getY());
+            for (int tileY = sweepLine.restrictTilePosition.getY(), tileX = 0; tileX < BOARDW; tileX++){
+                tile_S[tileY][tileX].moveAble = false;
+            }
             Tools.simpleToast("부활하였습니다.");
+            needLineUpdate = true;
         }
+        if (needLineUpdate){ sweepLine.needLineUpdate(); }
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < BOARDH; y++){
                 tile_S[y][x].onTimer(id, sendNum);
             }
         }
     }
-
     @Override
     public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
         TouchInfo t_Info = null;
@@ -388,16 +409,18 @@ public class GameBoard implements TimerAble, TouchEvent {
         }
         return true;
     }
+    @Override
+    public void tileUpdate() { needLineUpdate = true; }
 }
 
-class SweepLine{
+class SweepLine {
     //gameBoard.
     GameBoard gameBoard;
     int tileSize;
     //
     int alphaValue = 0xdd;
     //sweepLine property.
-    double position = 0d, speed;
+    double position, speed;
     Coord tilePosition, restrictTilePosition;
     int height, cycleHeight;
     //restrictTile's Bitmap
@@ -407,13 +430,14 @@ class SweepLine{
     SweepLine(GameBoard input){
         gameBoard = input;
         tileSize = gameBoard.tileSize;
-        tilePosition = new Coord(0, 0, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
+        tilePosition = new Coord(0, 1, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
         tilePosition.setBorder(0, GameBoard.BOARDW, 0, GameBoard.BOARDH);
         restrictTilePosition = new Coord(tilePosition);
-        restrictTilePosition.setPos(0, GameBoard.BOARDH - 1);
+        restrictTilePosition.setPos(0, 0);
         cycleHeight = tileSize * GameBoard.BOARDH;
         height = tileSize / 5;
         speed = (double)tileSize / 120;
+        position = (double)(height + 1);
         initBitmap();
     }
     void initBitmap(){
@@ -439,50 +463,138 @@ class SweepLine{
     }
     //
     boolean moveLine(int processNum){
-        //processNum = how many game ticks have to processing.
-        int tileProcessNum;//how many game tiles have to processing.
+        int tileProcessHeight;//how many game tile's row have to processing.
         position += speed * processNum;
-        tileProcessNum = (int)position / tileSize - tilePosition.getY();
+        tileProcessHeight = (int)position / tileSize - tilePosition.getY();
         if (position >= cycleHeight) position = (double)((int)position % cycleHeight);
-        if (processTile(tileProcessNum)) return true;//Die, game over.
-        processLine();
+        if (processLine(tileProcessHeight)) return true;//Die, game over.
         return false;
     }
-    boolean processTile(int tileProcessNum){
-        for (int processNum = 0; processNum < tileProcessNum; processNum++){
-            int tileY = tilePosition.getY();
-            //force close Tile's processing first.
-            for (int tileX = 0; tileX < GameBoard.BOARDW; tileX++){
-                gameBoard.tile_S[tileY][tileX].forceCloseProcess();
+    boolean processLine(int tileProcessHeight){
+        if (tileProcessHeight == 0){
+            return false;//NOT game over.
+        }
+        else {
+            for (int processNum = 0; processNum < tileProcessHeight; processNum++) {
+                int tileY = tilePosition.getY();
+                //force close Tile's processing first.
+                for (int tileX = 0; tileX < GameBoard.BOARDW; tileX++) {
+                    gameBoard.tile_S[tileY][tileX].forceCloseProcess();
+                }
+                //processLine.
+                if (!processLineRow()) return true;//Die, game over.
+                //generate new Tile.
+                newTile();
+                //set Tile restrict.
+                for (int tileX = 0; tileX < GameBoard.BOARDW; tileX++) {
+                    gameBoard.tile_S[tileY][tileX].moveAble = false;
+                }
+                //move to next line.
+                restrictTilePosition = tilePosition;
+                tilePosition = new Coord(tilePosition).move(new Direction(Direction.D));
             }
-            //processLine.
-            if (!processLine()) return true;//Die, game over.
-            //generate new Tile.
-            newTile();
-            //set Tile restrict.
-            for (int tileX = 0; tileX < GameBoard.BOARDW; tileX++){
-                gameBoard.tile_S[tileY][tileX].moveAble = false;
-            }
-            //move to next line.
-            restrictTilePosition = tilePosition;
-            tilePosition = new Coord(tilePosition).move(new Direction(Direction.D));
+            processLineRow();
         }
         return false;//NOT game over.
     }
-    boolean processLine(){
-        boolean isConnect = false;
+    boolean processLineRow(){
+        //return value.
+        boolean isConnectSuccess = true;
+        //result of line flow.
+        Direction[] newFlowDirection = null;
+        //temp.
+        int tempX = 0;
+        Direction directionU = new Direction(Direction.U);
+        Direction directionR = new Direction(Direction.R);
+        Direction directionL = new Direction(Direction.L);
+        Direction directionD = new Direction(Direction.D);
+        //position of Y.
         int tileX, tileY = tilePosition.getY(), restrictTileY = restrictTilePosition.getY();
-        for (tileX = 0; tileX < GameBoard.BOARDW; tileX++){
-            gameBoard.tile_S[tileY][tileX].connectState = false;
+        //line connecting Info.
+        class ConnectInfo{
+            int x;
+            Direction direction;
+            ConnectInfo(Direction di, int x){ direction = di; this.x = x; }
         }
+        LinkedList<ConnectInfo> connectInfo_S = new LinkedList<>();
+        ConnectInfo connectInfo = null;
+        //reset connect state.
         for (tileX = 0; tileX < GameBoard.BOARDW; tileX++){
-            if (gameBoard.tile_S[tileY][tileX].sendLineState){
-                //code here.
+            gameBoard.tile_S[tileY][tileX].deleteConnect();
+        }
+        //line connecting.
+        for (tileX = 0; tileX < GameBoard.BOARDW; tileX++){
+            if (gameBoard.tile_S[restrictTileY][tileX].lineD){//whether upper tile's lineFlow exist.
+                if (gameBoard.tile_S[tileY][tileX].isLine(directionU)){//check lineflow is able.
+                    newFlowDirection = gameBoard.tile_S[tileY][tileX].lineFlow(directionU);//lineflow.
+                    for (Direction di: newFlowDirection){ connectInfo_S.add(new ConnectInfo(di, tileX)); }//push to connectInfo_S stack.
+                    while(!connectInfo_S.isEmpty()){
+                        connectInfo = connectInfo_S.getLast();
+                        newFlowDirection = null;
+                        switch(connectInfo.direction.get()){
+                            case Direction.R:
+                                if (connectInfo.x < GameBoard.BOARDW - 1){//check out of board.
+                                    if (gameBoard.tile_S[tileY][connectInfo.x + 1].isLine(directionL)){//check lineflow is able.
+                                        newFlowDirection = gameBoard.tile_S[tileY][connectInfo.x + 1].lineFlow(directionL);
+                                        tempX = connectInfo.x + 1;
+                                    }
+                                    else { isConnectSuccess = false; }//lineflow fail.
+                                }
+                                else { isConnectSuccess = false; }//lineflow fail(out of board).
+                                break;
+                            case Direction.L:
+                                if (0 < connectInfo.x){//check out of board.
+                                    if (gameBoard.tile_S[tileY][connectInfo.x - 1].isLine(directionR)){//check lineflow is able.
+                                        newFlowDirection = gameBoard.tile_S[tileY][connectInfo.x - 1].lineFlow(directionR);
+                                        tempX = connectInfo.x - 1;
+                                    }
+                                    else { isConnectSuccess = false; }//lineflow fail.
+                                }
+                                else { isConnectSuccess = false; }//lineflow fail(out of board).
+                                break;
+                            case Direction.U:
+                                if (!gameBoard.tile_S[restrictTileY][connectInfo.x].lineD) isConnectSuccess = false;
+                                break;
+                            case Direction.D:
+                                break;
+                        }
+                        connectInfo_S.removeLast();
+                        if (newFlowDirection != null){
+                            for (Direction di : newFlowDirection){
+                                connectInfo_S.add(new ConnectInfo(di, tempX));
+                            }
+                        }
+                    }
+                }
+                else isConnectSuccess = false;//lineflow fail.
             }
         }
-        //return isConnect;
-        return true;
+        //if Connect is success, then more check.
+        if (isConnectSuccess){
+            //Check line is flowing to down
+            boolean lineFlowDown = false;
+            for (tileX = 0; tileX < GameBoard.BOARDW; tileX++){
+                if (gameBoard.tile_S[tileY][tileX].lineD){
+                    lineFlowDown = true;
+                    break;
+                }
+            }
+            if (!lineFlowDown) isConnectSuccess = false;
+            else {
+                //mustConnect check.
+                for (tileX = 0; tileX < GameBoard.BOARDW; tileX++) {
+                    if (gameBoard.tile_S[tileY][tileX].mustConnect) {
+                        if (!gameBoard.tile_S[tileY][tileX].isConnectAll()) {
+                            isConnectSuccess = false;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return isConnectSuccess;
     }
+    void needLineUpdate(){ processLineRow(); }
     void newTile(){
         int tileY = restrictTilePosition.getY();
         for (int tileX = 0; tileX < GameBoard.BOARDW; tileX++){
@@ -492,18 +604,19 @@ class SweepLine{
 }
 
 abstract class Tile implements TimerAble{
+    //tileUpdate Class.
+    interface TileUpdateReceiver{ void tileUpdate(); }
+    TileUpdateReceiver tileUpdateClass;
     //direction.
-    Direction direction = new Direction(Direction.R);
+    Direction tileDirection = new Direction(Direction.R);
     //tilesize.
     static int tileSize = 0;
     static int LineWidth = 0;
     //connect
-    boolean connectState = false;
+    boolean lineR = false, lineU = false, lineL = false, lineD = false;
     boolean mustConnect = false;
     //
     boolean moveAble = true;
-    //
-    boolean sendLineState = false;//whether line is flow to bottom.
     //bitmap.
     Bitmap outBitmap;
     Bitmap[] rotateBitmap;
@@ -518,11 +631,12 @@ abstract class Tile implements TimerAble{
     Coord pos, backupPos;
 
     //constructor.
-    Tile(Direction direction, Coord pos){
+    Tile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){
+        this.tileUpdateClass = tileUpdateClass;
         this.pos = pos;
         int di = direction.get();
         //this.drection's default value is R.
-        if (di == Direction.U || di == Direction.L || di == Direction.D) this.direction.set(di);
+        if (di == Direction.U || di == Direction.L || di == Direction.D) tileDirection.set(di);
         rotateBitmap = getRotateBitmap();
         directionToBitmap();
     }
@@ -548,13 +662,15 @@ abstract class Tile implements TimerAble{
         return !movePos.move(direction).isOut();
     }
     void startProcess(int content) {
+        if (!moveAble || isProcessing) return;
         switch (content) {
             case P_ROTATE_R:
             case P_ROTATE_L:
-                if (!moveAble || isProcessing) return;
                 isProcessing = true;
                 p_Content = content;
                 p_Level = 0;
+                deleteConnect();
+                tileUpdateClass.tileUpdate();
                 break;
             case P_RIGHT: startProcess(new Direction(Direction.R)); break;
             case P_UP: startProcess(new Direction(Direction.U)); break;
@@ -580,6 +696,8 @@ abstract class Tile implements TimerAble{
             p_Direction = new Direction(direction);
             backupPos = new Coord(pos);
             p_Level = 0;
+            deleteConnect();
+            tileUpdateClass.tileUpdate();
         }
     }
     void forceCloseProcess(){ onTimer(0, P_LEVEL); }
@@ -594,8 +712,9 @@ abstract class Tile implements TimerAble{
             if (p_Content == P_ROTATE_R || p_Content == P_ROTATE_L){//rotate process.
                 if (isProcessing){ directionToBitmap(); }
                 else {
-                    direction.rotate((p_Content == P_ROTATE_L)?true:false, 2);
+                    tileDirection.rotate((p_Content == P_ROTATE_L)?true:false, 2);
                     directionToBitmap();
+                    tileUpdateClass.tileUpdate();
                 }
             }
             else {//moveing process.
@@ -604,18 +723,18 @@ abstract class Tile implements TimerAble{
                 }
                 else {
                     pos = backupPos.move(p_Direction, tileSize);
+                    tileUpdateClass.tileUpdate();
                 }
             }
         }
     }
     void draw(Canvas canvas){
-        if (sendLineState){
-            canvas.drawRect(Tools.rectWH(pos.getX() - tileSize / 2, pos.getY() - tileSize / 2, tileSize, tileSize), Tools.colorPaint(MyColor.BLUE));
-        }
+        drawLine(canvas);
         canvas.drawBitmap(outBitmap, pos.getX() - outBitmap.getWidth() / 2, pos.getY() - outBitmap.getHeight() / 2, null);
     }
+    abstract void drawLine(Canvas canvas);
     void directionToBitmap(){
-        int di = direction.get();
+        int di = tileDirection.get();
         int rotateValue = 0, angle = P_LEVEL * 4;
         if (isProcessing){
             if (p_Content == P_ROTATE_L) rotateValue = p_Level;
@@ -645,9 +764,11 @@ abstract class Tile implements TimerAble{
         return bitmap_S;
     }
     abstract Bitmap[] getRotateBitmap();
-    //Connect Check.
-    abstract boolean isConnect(Direction input, Direction output);
+    //Connect.
+    void deleteConnect(){ lineR = lineU = lineL = lineD = false; }
+    abstract Direction[] lineFlow(Direction di);
     abstract boolean isLine(Direction di);
+    abstract boolean isConnectAll();
 
     //initialize Tile Bitmap.
     static void makeTileBitmap(int tileSize){
@@ -664,20 +785,32 @@ abstract class Tile implements TimerAble{
 class Tile_EX extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
-    Tile_EX(Direction direction, Coord pos){//constructor.
-        super(direction, pos);
+    Tile_EX(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){//constructor.
+        super(tileUpdateClass, direction, pos);
         mustConnect = true;//set whether require connecting.
+    }
+    @Override
+    void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
+        if (!isProcessing){
+
+        }
     }
     @Override
     Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
     @Override
-    boolean isConnect(Direction input, Direction output) {//check the line is connected input to output.
-        //overriding tile's Line.
-        return false;
+    Direction[] lineFlow(Direction di) {//line flow process. if line is start to flow by this, it will return direction.
+        if (!isProcessing){
+            ;
+        }
+        return new Direction[0];
     }
     @Override
     boolean isLine(Direction di) {//check whether line exist tile's direction.
         //overriding tile's line.
+        return false;
+    }
+    @Override
+    boolean isConnectAll() {//check whether tile's every line is connected.
         return false;
     }
     static void makeTileBitmap(){
@@ -691,21 +824,62 @@ class Tile_EX extends Tile{
 class Tile_STRAIGHT extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
-    Tile_STRAIGHT(Direction direction, Coord pos){//constructor.
-        super(direction, pos);
-        mustConnect = true;
+    Tile_STRAIGHT(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){//constructor.
+        super(tileUpdateClass, direction, pos);
+        mustConnect = false;//set whether require connecting.
+    }
+    @Override
+    void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
+        if (!isProcessing && isConnectAll()){
+            int tileSize_2 = tileSize / 2;
+            canvas.drawRect(
+                    pos.getX() - tileSize_2, pos.getY() - tileSize_2,
+                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(MyColor.BLUE, true)
+            );
+        }
     }
     @Override
     Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
     @Override
-    boolean isConnect(Direction input, Direction output) {//check the line is connected input to output.
-        Direction outputMirror = new Direction(output).mirror();
-        return !isProcessing && input.equals(outputMirror) && (direction.equals(input) || direction.equals(output));
+    Direction[] lineFlow(Direction di) {//line flow process. if line is start to flow by this, it will return direction.
+        if (isLine(di)){
+            switch(di.get()){
+                case Direction.R:
+                    if (!lineL){
+                        lineR = lineL = true;
+                        return new Direction[]{new Direction(Direction.L)};
+                    }
+                    break;
+                case Direction.U:
+                    if (!lineD){
+                        lineU = lineD = true;
+                        return new Direction[]{new Direction(Direction.D)};
+                    }
+                    break;
+                case Direction.L:
+                    if (!lineR){
+                        lineR = lineL = true;
+                        return new Direction[]{new Direction(Direction.R)};
+                    }
+                    break;
+                case Direction.D:
+                    if (!lineU){
+                        lineU = lineD = true;
+                        return new Direction[]{new Direction(Direction.U)};
+                    }
+                    break;
+            }
+        }
+        return new Direction[0];
     }
     @Override
     boolean isLine(Direction di) {//check whether line exist tile's direction.
         Direction diMirror = new Direction(di).mirror();
-        return direction.equals(di) || direction.equals(diMirror);
+        return tileDirection.equals(di) || tileDirection.equals(diMirror);
+    }
+    @Override
+    boolean isConnectAll() {//check whether tile's every line is connected.
+        return lineR || lineU;
     }
     static void makeTileBitmap(){
         Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
@@ -721,15 +895,17 @@ class Tile_STRAIGHT extends Tile{
 class TileA extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S = new Bitmap[Tile.P_LEVEL * 4];
-    TileA(Direction direction, Coord pos){ super(direction, pos); }
+    TileA(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){ super(tileUpdateClass, direction, pos); }
     @Override
-    boolean isConnect(Direction input, Direction output) {
-        return false;
-    }
+    void drawLine(Canvas canvas) { ; }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    Direction[] lineFlow(Direction di) { return new Direction[0]; }
     @Override
     boolean isLine(Direction di) { return false; }
     @Override
-    Bitmap[] getRotateBitmap() { return bitmap_S; }
+    boolean isConnectAll() { return true; }
     static void makeTileBitmap(){
         Canvas canvas = new Canvas();
         Paint paint = new Paint();
@@ -748,15 +924,17 @@ class TileA extends Tile{
 class TileB extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S = new Bitmap[Tile.P_LEVEL * 4];
-    TileB(Direction direction, Coord pos){ super(direction, pos); }
+    TileB(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){ super(tileUpdateClass, direction, pos); }
     @Override
-    boolean isConnect(Direction input, Direction output) {
-        return false;
-    }
+    void drawLine(Canvas canvas) { ; }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    Direction[] lineFlow(Direction di) { return new Direction[0]; }
     @Override
     boolean isLine(Direction di) { return false; }
     @Override
-    Bitmap[] getRotateBitmap() { return bitmap_S; }
+    boolean isConnectAll() { return true; }
     static void makeTileBitmap(){
         Canvas canvas = new Canvas();
         Paint paint = new Paint();
