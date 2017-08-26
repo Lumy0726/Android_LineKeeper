@@ -8,7 +8,7 @@ import kr.co.lumylumy.linekeeper.tools.TouchInfo;
  * Created by LMJ on 2017-08-08.
  */
 
-public class GamePause implements GameBase{
+class GamePause implements GameBase{
     //gameMain.
     GameMain gameMain;
 

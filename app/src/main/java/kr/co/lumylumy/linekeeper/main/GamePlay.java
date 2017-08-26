@@ -15,7 +15,7 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView;
  * Created by LMJ on 2017-08-08.
  */
 
-public class GamePlay implements GameBase{
+class GamePlay implements GameBase{
     //gameMain.
     GameMain gameMain;
     //size value.
