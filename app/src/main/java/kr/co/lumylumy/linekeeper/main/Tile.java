@@ -24,7 +24,7 @@ abstract class Tile implements TimerAble {
     Direction tileDirection = new Direction(Direction.R);
     //tilesize.
     static int tileSize = 0;
-    static int LineWidth = 0;
+    static int lineWidth = 0;
     //if moveAble is false, draw this.
     static Bitmap b_UnAbleMove;
     //connect
@@ -191,7 +191,7 @@ abstract class Tile implements TimerAble {
     static void makeTileBitmap(int tileSize){
         //size, speed.
         Tile.tileSize = tileSize;
-        LineWidth = tileSize / 5;
+        lineWidth = tileSize / 5;
         moveSpeed = tileSize / P_LEVEL;
         //b_UnAbleMove.
         {
@@ -212,6 +212,8 @@ abstract class Tile implements TimerAble {
         TileA.makeTileBitmap();
         TileB.makeTileBitmap();
         Tile_STRAIGHT.makeTileBitmap();
+        Tile_STRAIGHT_MUST.makeTileBitmap();
+        Tile_CURVE.makeTileBitmap();
     }
 }
 //example of tile.
@@ -225,8 +227,12 @@ class Tile_EX extends Tile{
     }
     @Override
     void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
-        if (!isProcessing){
-
+        if (!isProcessing && isConnectAll()){//for dual line, need more checking about isConnect.
+            int tileSize_2 = tileSize / 2;
+            canvas.drawRect(
+                    pos.getX() - tileSize_2, pos.getY() - tileSize_2,
+                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(MyColor.BLUE, true)
+            );
         }
     }
     @Override
@@ -273,32 +279,34 @@ class Tile_STRAIGHT extends Tile{
     Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
     @Override
     Direction[] lineFlow(Direction di) {//line flow process. if line is start to flow by this, it will return direction.
-        if (isLine(di)){
-            switch(di.get()){
-                case Direction.R:
-                    if (!lineL){
-                        lineR = lineL = true;
-                        return new Direction[]{new Direction(Direction.L)};
-                    }
-                    break;
-                case Direction.U:
-                    if (!lineD){
-                        lineU = lineD = true;
-                        return new Direction[]{new Direction(Direction.D)};
-                    }
-                    break;
-                case Direction.L:
-                    if (!lineR){
-                        lineR = lineL = true;
-                        return new Direction[]{new Direction(Direction.R)};
-                    }
-                    break;
-                case Direction.D:
-                    if (!lineU){
-                        lineU = lineD = true;
-                        return new Direction[]{new Direction(Direction.U)};
-                    }
-                    break;
+        if (!isProcessing){
+            if (isLine(di)){
+                switch(di.get()){
+                    case Direction.R:
+                        if (!lineL){
+                            lineR = lineL = true;
+                            return new Direction[]{new Direction(Direction.L)};
+                        }
+                        break;
+                    case Direction.U:
+                        if (!lineD){
+                            lineU = lineD = true;
+                            return new Direction[]{new Direction(Direction.D)};
+                        }
+                        break;
+                    case Direction.L:
+                        if (!lineR){
+                            lineR = lineL = true;
+                            return new Direction[]{new Direction(Direction.R)};
+                        }
+                        break;
+                    case Direction.D:
+                        if (!lineU){
+                            lineU = lineD = true;
+                            return new Direction[]{new Direction(Direction.U)};
+                        }
+                        break;
+                }
             }
         }
         return new Direction[0];
@@ -317,7 +325,126 @@ class Tile_STRAIGHT extends Tile{
         Canvas canvas = Tools.newCanvas(tileBitmap);
         //draw tile bitmap (Direction U)
         Tools.resetBitmap(canvas, MyColor.hsvColor(24, 100, 80));
-        canvas.drawRect((tileSize - LineWidth) / (float)2, 0, (tileSize + LineWidth) / (float)2, tileSize ,Tools.colorPaint(0, true));
+        canvas.drawRect((tileSize - lineWidth) / (float)2, 0, (tileSize + lineWidth) / (float)2, tileSize ,Tools.colorPaint(0, true));
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+}
+
+class Tile_STRAIGHT_MUST extends Tile_STRAIGHT{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_STRAIGHT_MUST(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){//constructor.
+        super(tileUpdateClass, direction, pos);
+        mustConnect = true;
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        //draw tile bitmap (Direction U)
+        Tools.resetBitmap(canvas, MyColor.hsvColor(24, 100, 50));
+        canvas.drawRect((tileSize - lineWidth) / (float)2, 0, (tileSize + lineWidth) / (float)2, tileSize ,Tools.colorPaint(0, true));
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+}
+
+class Tile_CURVE extends Tile{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_CURVE(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){ super(tileUpdateClass, direction, pos); }
+    @Override
+    void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
+        if (!isProcessing && isConnectAll()){
+            int tileSize_2 = tileSize / 2;
+            canvas.drawRect(
+                    pos.getX() - tileSize_2, pos.getY() - tileSize_2,
+                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(MyColor.BLUE, true)
+            );
+        }
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    Direction[] lineFlow(Direction di) {//line flow process. if line is start to flow by this, it will return direction.
+        if (!isProcessing){
+            if (isLine(di)){
+                if (tileDirection.equals(di)){
+                    switch(di.get()){
+                        case Direction.R:
+                            if (!lineU){
+                                lineU = lineR = true;
+                                return new Direction[]{new Direction(Direction.U)};
+                            }
+                            break;
+                        case Direction.U:
+                            if (!lineL){
+                                lineL = lineU = true;
+                                return new Direction[]{new Direction(Direction.L)};
+                            }
+                            break;
+                        case Direction.L:
+                            if (!lineD){
+                                lineD = lineL = true;
+                                return new Direction[]{new Direction(Direction.D)};
+                            }
+                            break;
+                        case Direction.D:
+                            if (!lineR){
+                                lineR = lineD = true;
+                                return new Direction[]{new Direction(Direction.R)};
+                            }
+                            break;
+                    }
+                }
+                else {
+                    switch(di.get()){
+                        case Direction.R:
+                            if (!lineD){
+                                lineD = lineR = true;
+                                return new Direction[]{new Direction(Direction.D)};
+                            }
+                            break;
+                        case Direction.U:
+                            if (!lineR){
+                                lineR = lineU = true;
+                                return new Direction[]{new Direction(Direction.R)};
+                            }
+                            break;
+                        case Direction.L:
+                            if (!lineU){
+                                lineU = lineL = true;
+                                return new Direction[]{new Direction(Direction.U)};
+                            }
+                            break;
+                        case Direction.D:
+                            if (!lineL){
+                                lineL = lineD = true;
+                                return new Direction[]{new Direction(Direction.L)};
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+        return new Direction[0];
+    }
+    @Override
+    boolean isLine(Direction di) {//check whether line exist tile's direction.
+        Direction di2 = new Direction(di).rotate(false, 2);
+        return tileDirection.equals(di) || tileDirection.equals(di2);
+    }
+    @Override
+    boolean isConnectAll() {//check whether tile's every line is connected.
+        return lineR || lineL;
+    }
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        //draw tile bitmap (Direction U)
+        Tools.resetBitmap(canvas, MyColor.hsvColor(24, 100, 80));
+        canvas.drawCircle(0, 0, (tileSize + lineWidth) / (float)2, Tools.colorPaint(0, true));
+        canvas.drawCircle(0, 0, (tileSize - lineWidth) / (float)2, Tools.colorPaint(MyColor.hsvColor(24, 100, 80)));
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
 }
