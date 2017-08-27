@@ -22,8 +22,6 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 /*
 ---Job List---
 DEV.
-    Line Connecting이 모든 타일에까지 연결되어 보이도록 처리하기.
-    cursorTilePos 또한 Cycle을 가지도록 하기.
     make many type of tile (extends Tile Class).
     점수, 난이도 기능 추가하기.
     make image of tile.

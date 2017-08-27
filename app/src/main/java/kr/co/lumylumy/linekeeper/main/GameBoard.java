@@ -376,11 +376,13 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
                             if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_R);
                         }
                         else if (rect_Control[CONTROL_R].contains(x, y)){ di = new Direction(Direction.R); }
-                        else if (rect_Control[CONTROL_U].contains(x, y)){ di = new Direction(Direction.U); }
                         else if (rect_Control[CONTROL_L].contains(x, y)){ di = new Direction(Direction.L); }
+                        else if (rect_Control[CONTROL_U].contains(x, y)){ di = new Direction(Direction.U); }
                         else if (rect_Control[CONTROL_D].contains(x, y)){ di = new Direction(Direction.D); }
                         if (di != null) {
                             obPos = new Coord(cursorTilePos);
+                            if (di.get() == Direction.U && obPos.getY() == 0) obPos.setPosY(BOARDH);
+                            if (di.get() == Direction.D && obPos.getY() == BOARDH) obPos.setPosY(0);
                             obPos.move(di);
                             if (!obPos.isOut()) {
                                 diM = new Direction(di);
