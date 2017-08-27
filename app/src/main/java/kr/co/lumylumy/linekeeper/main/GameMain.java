@@ -25,7 +25,6 @@ DEV.
     Line Connecting이 모든 타일에까지 연결되어 보이도록 처리하기.
     cursorTilePos 또한 Cycle을 가지도록 하기.
     make many type of tile (extends Tile Class).
-        moveAble이 false인 것들 + 그것들의 출력 다르게하기.
     점수, 난이도 기능 추가하기.
     make image of tile.
     이미지를 resource폴더에 넣어두고 로드하기.

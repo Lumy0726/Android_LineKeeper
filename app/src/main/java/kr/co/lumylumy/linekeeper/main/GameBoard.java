@@ -57,6 +57,7 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
     Coord cursorTilePos;
     //
     Coord tileInternalPosEx;
+    Coord tileExternalPosEx;
     //sweepLine.
     SweepLine sweepLine;
     boolean needLineUpdate;
@@ -139,6 +140,9 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
         //BitmapBoard.
         b_Board = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888);
         c_Board = Tools.newCanvas(b_Board);
+        //
+        tileExternalPosEx = new Coord(0, 0, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
+        tileExternalPosEx.setBorder(0, BOARDW, 0, BOARDH);
         //Tile allocate.
         tileInternalPosEx = new Coord(0, 0, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
         tileInternalPosEx.setBorder(0, outputWidth, tileSize, tileSize * (BOARDH + 1));
@@ -317,12 +321,12 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
         //androidLog(String.format("GameBoard-draw-main: %5.2f", time_M.getTimeAv()));
     }
     //
-    int getTileY(Coord input){ return Tools.remainder(input.getY() - 1, BOARDH); }
-    Tile getTile(Coord input){ return tile_S[getTileY(input)][input.getX()]; }
-    void tileSwap(Coord input1, Coord input2){
-        Tile temp = getTile(input1);
-        tile_S[getTileY(input1)][input1.getX()] = getTile(input2);
-        tile_S[getTileY(input2)][input2.getX()] = temp;
+    int getTileYToCursor(Coord input){ return Tools.remainder(input.getY() - 1, BOARDH); }
+    Tile getTileToCursor(Coord input){ return tile_S[getTileYToCursor(input)][input.getX()]; }
+    void tileSwapToCursor(Coord input1, Coord input2){
+        Tile temp = getTileToCursor(input1);
+        tile_S[getTileYToCursor(input1)][input1.getX()] = getTileToCursor(input2);
+        tile_S[getTileYToCursor(input2)][input2.getX()] = temp;
     }
     //timer, touch.
     @Override
@@ -363,7 +367,7 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
                     if (!cursorTilePos.isOut()){
                         Direction di = null, diM;
                         Coord obPos;
-                        tile = getTile(cursorTilePos);
+                        tile = getTileToCursor(cursorTilePos);
                         int x = (int) touchInfo.x, y = (int) touchInfo.y - tileOutputHeight;
                         if (rect_Control[CONTROL_ROTATEL].contains(x, y)){
                             if (tile.processAble(Tile.P_ROTATE_L)) tile.startProcess(Tile.P_ROTATE_L);
@@ -381,9 +385,9 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
                             if (!obPos.isOut()) {
                                 diM = new Direction(di);
                                 diM.mirror();
-                                tile2 = getTile(obPos);
+                                tile2 = getTileToCursor(obPos);
                                 if (tile.processAble(di) && tile2.processAble(diM)) {
-                                    tileSwap(cursorTilePos, obPos);
+                                    tileSwapToCursor(cursorTilePos, obPos);
                                     tile.startProcess(di);
                                     tile2.startProcess(diM);
                                     cursorTilePos = obPos;
@@ -394,7 +398,7 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
                 }
                 else {//select tile
                     if (cursorTilePos.samePos(touchTilePos)){
-                        tile = getTile(cursorTilePos);
+                        tile = getTileToCursor(cursorTilePos);
                         if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_R);
                     }
                     else { cursorTilePos = touchTilePos; }
@@ -504,65 +508,65 @@ class SweepLine {
         //result of line flow.
         Direction[] newFlowDirection = null;
         //temp.
-        int tempX = 0;
-        Direction directionU = new Direction(Direction.U);
-        Direction directionR = new Direction(Direction.R);
-        Direction directionL = new Direction(Direction.L);
-        Direction directionD = new Direction(Direction.D);
+        Coord tempPos = null;
+        Direction tempDirection = null;
         //position of Y.
         int tileX, tileY = tilePosition.getY(), restrictTileY = restrictTilePosition.getY();
         //line connecting Info.
         class ConnectInfo{
-            int x;
+            Coord pos;
             Direction direction;
-            ConnectInfo(Direction di, int x){ direction = di; this.x = x; }
+            ConnectInfo(Direction di, Coord pos){ direction = di; this.pos = pos; }
         }
         LinkedList<ConnectInfo> connectInfo_S = new LinkedList<>();
         ConnectInfo connectInfo = null;
         //reset connect state.
         for (tileX = 0; tileX < GameBoard.BOARDW; tileX++){
-            gameBoard.tile_S[tileY][tileX].deleteConnect();
+            for (int y = 0; y < GameBoard.BOARDH; y++){
+                if (y != restrictTileY){
+                    gameBoard.tile_S[y][tileX].deleteConnect();
+                }
+            }
         }
         //line connecting.
         for (tileX = 0; tileX < GameBoard.BOARDW; tileX++){
             if (gameBoard.tile_S[restrictTileY][tileX].lineD){//whether upper tile's lineFlow exist.
-                if (gameBoard.tile_S[tileY][tileX].isLine(directionU)){//check lineflow is able.
-                    newFlowDirection = gameBoard.tile_S[tileY][tileX].lineFlow(directionU);//lineflow.
-                    for (Direction di: newFlowDirection){ connectInfo_S.add(new ConnectInfo(di, tileX)); }//push to connectInfo_S stack.
+                if (gameBoard.tile_S[tileY][tileX].isLine(new Direction(Direction.U))){//check lineflow is able.
+                    newFlowDirection = gameBoard.tile_S[tileY][tileX].lineFlow(new Direction(Direction.U));//lineflow.
+                    tempPos = new Coord(gameBoard.tileExternalPosEx).setPos(tileX, tileY);
+                    for (Direction di: newFlowDirection){//push to connectInfo_S stack.
+                        connectInfo_S.add(new ConnectInfo(di, tempPos));
+                    }
                     while(!connectInfo_S.isEmpty()){
                         connectInfo = connectInfo_S.getLast();
                         newFlowDirection = null;
+                        tempPos = new Coord(connectInfo.pos).move(connectInfo.direction);
                         switch(connectInfo.direction.get()){
                             case Direction.R:
-                                if (connectInfo.x < GameBoard.BOARDW - 1){//check out of board.
-                                    if (gameBoard.tile_S[tileY][connectInfo.x + 1].isLine(directionL)){//check lineflow is able.
-                                        newFlowDirection = gameBoard.tile_S[tileY][connectInfo.x + 1].lineFlow(directionL);
-                                        tempX = connectInfo.x + 1;
-                                    }
-                                    else { isConnectSuccess = false; }//lineflow fail.
-                                }
-                                else { isConnectSuccess = false; }//lineflow fail(out of board).
-                                break;
                             case Direction.L:
-                                if (0 < connectInfo.x){//check out of board.
-                                    if (gameBoard.tile_S[tileY][connectInfo.x - 1].isLine(directionR)){//check lineflow is able.
-                                        newFlowDirection = gameBoard.tile_S[tileY][connectInfo.x - 1].lineFlow(directionR);
-                                        tempX = connectInfo.x - 1;
+                            case Direction.D:
+                                if (!tempPos.isOut()){//check out of board.
+                                    if (tempPos.getY() == restrictTileY){//prevent infinity lineflow.
+                                        break;
                                     }
-                                    else { isConnectSuccess = false; }//lineflow fail.
+                                    tempDirection = new Direction(connectInfo.direction).mirror();
+                                    if (gameBoard.tile_S[tempPos.getY()][tempPos.getX()].isLine(tempDirection)){//check lineflow is able.
+                                        newFlowDirection = gameBoard.tile_S[tempPos.getY()][tempPos.getX()].lineFlow(tempDirection);
+                                    }
+                                    else if (tempPos.getY() == tileY) { isConnectSuccess = false; }//lineflow fail.
                                 }
-                                else { isConnectSuccess = false; }//lineflow fail(out of board).
+                                else if (tempPos.getY() == tileY) { isConnectSuccess = false; }//lineflow fail(out of board).
                                 break;
                             case Direction.U:
-                                if (!gameBoard.tile_S[restrictTileY][connectInfo.x].lineD) isConnectSuccess = false;
-                                break;
-                            case Direction.D:
+                                if (tempPos.getY() == restrictTileY){
+                                    if (!gameBoard.tile_S[tempPos.getY()][tempPos.getX()].lineD) isConnectSuccess = false;
+                                }
                                 break;
                         }
                         connectInfo_S.removeLast();
                         if (newFlowDirection != null){
                             for (Direction di : newFlowDirection){
-                                connectInfo_S.add(new ConnectInfo(di, tempX));
+                                connectInfo_S.add(new ConnectInfo(di, tempPos));
                             }
                         }
                     }
