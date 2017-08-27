@@ -183,40 +183,13 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
             Coord coord = new Coord(tileInternalPosEx);
             coord.setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
             Direction direction = null;
-            int[] tileProbability = new int[]{2, 2, 2, 2, 1};
-            int probabilitySum = 0, tileIndex = 0;
-            for (int loop1 = 0; loop1 < tileProbability.length; loop1++){ probabilitySum += tileProbability[loop1]; }
             switch((int)(Math.random() * 4)){
                 case 0: direction = new Direction(Direction.R); break;
                 case 1: direction = new Direction(Direction.U); break;
                 case 2: direction = new Direction(Direction.L); break;
                 case 3: direction = new Direction(Direction.D); break;
             }
-            for (
-                    int tempSum = 0, value = (int)(Math.random() * probabilitySum);
-                    tileIndex < tileProbability.length;
-                    tileIndex++
-                    ){
-                if (tempSum <= value && value < tempSum + tileProbability[tileIndex]) break;
-                tempSum += tileProbability[tileIndex];
-            }
-            switch(tileIndex){
-                case 0:
-                    tile_S[y][x] = new Tile_STRAIGHT(this, direction, coord);
-                    break;
-                case 1:
-                    tile_S[y][x] = new Tile_CURVE(this, direction, coord);
-                    break;
-                case 2:
-                    tile_S[y][x] = new TileA(this, direction, coord);
-                    break;
-                case 3:
-                    tile_S[y][x] = new TileB(this, direction, coord);
-                    break;
-                case 4:
-                    tile_S[y][x] = new Tile_STRAIGHT_MUST(this, direction, coord);
-                    break;
-            }
+            tile_S[y][x] = Tile.newTile(this, direction, coord, 0);
         }
     }
     void startTileAllocate(int x, int y){

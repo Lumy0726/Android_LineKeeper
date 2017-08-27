@@ -215,6 +215,39 @@ abstract class Tile implements TimerAble {
         Tile_STRAIGHT_MUST.makeTileBitmap();
         Tile_CURVE.makeTileBitmap();
     }
+
+    //tileAllocator.
+    static int[] tileProbability = new int[]{2, 2, 2, 2, 1};
+    static int probabilitySum = 0;
+    static {
+        for (int loop1 = 0; loop1 < tileProbability.length; loop1++){ probabilitySum += tileProbability[loop1]; }
+    }
+    static Tile newTile(TileUpdateReceiver tileUpdateClass, Direction tileDirection, Coord tileOutputPos, int level){
+        int tileIndex = 0;
+        //code Add - allocate algorithm must to be changed with level.
+        for (
+                int tempSum = 0, value = (int)(Math.random() * probabilitySum);
+                tileIndex < tileProbability.length;
+                tileIndex++
+                ){
+            if (tempSum <= value && value < tempSum + tileProbability[tileIndex]) break;
+            tempSum += tileProbability[tileIndex];
+        }
+        switch(tileIndex){
+            case 0:
+                return new Tile_STRAIGHT(tileUpdateClass, tileDirection, tileOutputPos);
+            case 1:
+                return new Tile_CURVE(tileUpdateClass, tileDirection, tileOutputPos);
+            case 2:
+                return new TileA(tileUpdateClass, tileDirection, tileOutputPos);
+            case 3:
+                return new TileB(tileUpdateClass, tileDirection, tileOutputPos);
+            case 4:
+                return new Tile_STRAIGHT_MUST(tileUpdateClass, tileDirection, tileOutputPos);
+            default:
+                return null;
+        }
+    }
 }
 //example of tile.
 /*
