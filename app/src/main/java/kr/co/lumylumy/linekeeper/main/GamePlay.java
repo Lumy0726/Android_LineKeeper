@@ -27,6 +27,8 @@ class GamePlay implements GameBase{
     //GameBoard
     GameBoard gameBoard;
     int gameBoardW, gameBoardH;
+    //ScoreBoard
+    ScoreBoard scoreBoard;
     //TouchEvent.
     ArrayList<TouchInfo> touchInfo_S = new ArrayList<>();
 
@@ -41,6 +43,7 @@ class GamePlay implements GameBase{
         gameBoard = new GameBoard(dv_Width, dv_Height);
         gameBoardW = gameBoard.outputWidth; gameBoardH = gameBoard.outputHeight;
         gameBoardMargin = dv_Height - gameBoardH;
+        scoreBoard = new ScoreBoard(dv_Width * 8 / 10, gameBoardMargin);
     }
     @Override
     public void onStart() {
@@ -56,12 +59,15 @@ class GamePlay implements GameBase{
         Tools.resetBitmap(gameMain.dv_Canvas, MyColor.WHITE);
         gameBoard.onTimer(id, sendNum);
         gameBoard.draw(gameMain.dv_Canvas);
+        scoreBoard.draw(gameMain.dv_Canvas, gameBoard.gameScore, gameBoard.gameScore / 4600 + 1);
+        /*
         Bitmap scoreBitmap = Tools.textBitmap(
                 gameBoard.gameScore + "",
                 gameBoardMargin,
                 Tools.textPaint(MyColor.BLACK, gameBoardMargin, Paint.Align.LEFT)
         );
         gameMain.dv_Canvas.drawBitmap(scoreBitmap, 0, 0, null);
+        */
         gameMain.drawView.update();
     }
 
