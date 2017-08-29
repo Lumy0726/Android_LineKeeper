@@ -171,7 +171,7 @@ class Menu {
         paint.setStyle(Paint.Style.FILL);
         paint.setShader(new LinearGradient(0, 0, 0, height, MyColor.hsvColor(68, 100, 100), MyColor.hsvColor(68, 80, 50), Shader.TileMode.CLAMP));
         canvas.drawPath(path, paint);
-        Bitmap tBitmap = Tools.textBitmap(str, width, height, Tools.aaPaint(Tools.colorPaint(MyColor.BLUE)));
+        Bitmap tBitmap = Tools.textBitmap(str, height, Tools.aaPaint(Tools.colorPaint(MyColor.BLUE)));
         canvas.drawBitmap(tBitmap, (width - tBitmap.getWidth()) / (float) 2, (height - tBitmap.getHeight()) / (float) 2, null);
         bitmapTouch = Bitmap.createBitmap(bitmap);
         canvas.setBitmap(bitmapTouch);

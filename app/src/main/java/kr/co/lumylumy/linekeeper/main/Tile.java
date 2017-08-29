@@ -8,7 +8,6 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Shader;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Random;
 
 import kr.co.lumylumy.linekeeper.timer.TimerAble;
@@ -28,6 +27,7 @@ interface TileAllocator{
 }
 //Tile class
 abstract class Tile implements TimerAble {
+    //
     TileUpdateReceiver tileUpdateClass;
     //direction.
     Direction tileDirection = new Direction(Direction.R);
@@ -53,6 +53,8 @@ abstract class Tile implements TimerAble {
     static int moveSpeed;
     //Canvas's position(tile's middle).
     Coord pos, backupPos;
+    //
+    static final int SCORE_DEFAULT = 100;
 
     //constructor.
     Tile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){
@@ -195,6 +197,7 @@ abstract class Tile implements TimerAble {
     abstract Direction[] lineFlow(Direction di);
     abstract boolean isLine(Direction di);
     abstract boolean isConnectAll();
+    abstract int connectScore();
 
     //initialize Tile Bitmap.
     static void tileInitialze(int tileSize){
@@ -235,11 +238,11 @@ abstract class Tile implements TimerAble {
 
     //tileAllocator.
     /*
-    interface Probability{ int get(int level); }
-    class TileAllocInfo{
-        String className;
-        TileProbability tileProbability;
-        TileAllocInfo(String className, TileProbability tileProbability){ this.className = className; this.tileProbability = tileProbability; }
+    interface Probability { int get(int level); }
+    interface TileAllocator {
+        int probabilityDefault = 100;
+        int getProbability(int level);
+        Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos);
     }
     */
     static TileAllocator[] tileAllocatorTable;
@@ -264,7 +267,7 @@ abstract class Tile implements TimerAble {
     }
 }
 //example of tile.
-/*
+
 class Tile_EX extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
@@ -300,6 +303,10 @@ class Tile_EX extends Tile{
     boolean isConnectAll() {//check whether tile's every line is connected.
         return false;
     }
+    @Override
+    int connectScore() {//return score.
+        return 0;
+    }
     static void makeTileBitmap(){
         Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
         //draw tile bitmap (Direction U)
@@ -314,7 +321,7 @@ class Tile_EX extends Tile{
         };
     }
 }
-*/
+
 
 class Tile_STRAIGHT extends Tile{
     //Bitmap.
@@ -374,6 +381,19 @@ class Tile_STRAIGHT extends Tile{
     @Override
     boolean isConnectAll() {//check whether tile's every line is connected.
         return lineR || lineU;
+    }
+    @Override
+    int connectScore() {//return score.
+        if (isConnectAll()){
+            switch(tileDirection.get()){
+                case Direction.R:
+                case Direction.L:
+                    return SCORE_DEFAULT * 2;
+                default:
+                    return SCORE_DEFAULT;
+            }
+        }
+        return 0;
     }
     static void makeTileBitmap(){
         Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
@@ -509,6 +529,11 @@ class Tile_CURVE extends Tile{
     boolean isConnectAll() {//check whether tile's every line is connected.
         return lineR || lineL;
     }
+    @Override
+    int connectScore() {//return score.
+        if (isConnectAll()) return SCORE_DEFAULT;
+        return 0;
+    }
     static void makeTileBitmap(){
         Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
         Canvas canvas = Tools.newCanvas(tileBitmap);
@@ -541,6 +566,8 @@ class TileA extends Tile{
     Direction[] lineFlow(Direction di) { return new Direction[0]; }
     @Override
     boolean isLine(Direction di) { return false; }
+    @Override
+    int connectScore() { return 0; }
     @Override
     boolean isConnectAll() { return true; }
     static void makeTileBitmap(){
@@ -580,6 +607,8 @@ class TileB extends Tile{
     boolean isLine(Direction di) { return false; }
     @Override
     boolean isConnectAll() { return true; }
+    @Override
+    int connectScore() { return 0; }
     static void makeTileBitmap(){
         Canvas canvas = new Canvas();
         Paint paint = new Paint();

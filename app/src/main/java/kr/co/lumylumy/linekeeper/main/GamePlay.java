@@ -1,6 +1,8 @@
 package kr.co.lumylumy.linekeeper.main;
 
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
@@ -51,8 +53,15 @@ class GamePlay implements GameBase{
     //Timer/Touch input.
     @Override
     public void onTimer(int id, int sendNum) {
+        Tools.resetBitmap(gameMain.dv_Canvas, MyColor.WHITE);
         gameBoard.onTimer(id, sendNum);
         gameBoard.draw(gameMain.dv_Canvas);
+        Bitmap scoreBitmap = Tools.textBitmap(
+                gameBoard.gameScore + "",
+                gameBoardMargin,
+                Tools.textPaint(MyColor.BLACK, gameBoardMargin, Paint.Align.LEFT)
+        );
+        gameMain.dv_Canvas.drawBitmap(scoreBitmap, 0, 0, null);
         gameMain.drawView.update();
     }
 

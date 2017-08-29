@@ -24,6 +24,7 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 DEV.
     make many type of tile (extends Tile Class).
     점수, 난이도 기능 추가하기.
+    sweepLine을 사용자가 바로 내리는 기능 추가하기.
     make image of tile.
     이미지를 resource폴더에 넣어두고 로드하기.
         --->이미지가 apk에서 바로 보이지 않도록 간단한 변환을 한 뒤 저장, 불러올때 변환 제거하고 Bitmap으로 변환.

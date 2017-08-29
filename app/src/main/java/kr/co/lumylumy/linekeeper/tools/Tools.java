@@ -204,7 +204,7 @@ public class Tools {
         }
         return null;
     }
-    public static Bitmap textBitmap(String str, int width, int height_TextSize, Paint textPaint){
+    public static Bitmap textBitmap(String str, int height_TextSize, Paint textPaint){
         Rect rect = new Rect();
         textPaint.setTextAlign(Paint.Align.LEFT);
         textPaint.setTextSize(height_TextSize);
