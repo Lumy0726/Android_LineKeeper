@@ -29,7 +29,7 @@ import static kr.co.lumylumy.linekeeper.log.LogSystem.androidLog;
  * Created by LMJ on 2017-08-12.
  */
 
-class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
+class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
     //
     static final int BOARDW = 6, BOARDH= 6;
     //size.
@@ -128,7 +128,8 @@ class GameBoard implements TimerAble, TouchEvent, Tile.TileUpdateReceiver {
     }
     void init(){
         //Tile initialize.
-        Tile.makeTileBitmap(tileSize);
+        Tile.tileInitialze(tileSize);
+        //Tile.tileAllocSeedReset((long)0);
         //sweepLine.
         sweepLine = new SweepLine(this);
         needLineUpdate = true;
