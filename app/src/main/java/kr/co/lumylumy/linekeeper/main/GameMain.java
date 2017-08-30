@@ -23,10 +23,15 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 ---Job List---
 DEV.
     make many type of tile (extends Tile Class).
-    점수, 난이도 기능 추가하기.
+    레벨, 난이도 기능 추가하기.
+    불완전하게 연결된 타일 시각적으로 보이도록 하기.
     sweepLine을 사용자가 바로 내리는 기능 추가하기.
+    게임중 중지 기능 추가하기.
+    메인메뉴에 타이틀, 최고기록 표시하기.
+    메인메뉴에 설정 관련 추가하기.
+
     make image of tile.
-    이미지를 resource폴더에 넣어두고 로드하기.
+        이미지를 resource폴더에 넣어두고 로드하기.
         --->이미지가 apk에서 바로 보이지 않도록 간단한 변환을 한 뒤 저장, 불러올때 변환 제거하고 Bitmap으로 변환.
     GameBoard - 이후 계속 개발.
 DEBUG.
