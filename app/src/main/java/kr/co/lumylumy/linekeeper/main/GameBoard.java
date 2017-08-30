@@ -449,7 +449,7 @@ class SweepLine {
         restrictTilePosition.setPos(0, 0);
         cycleHeight = tileSize * GameBoard.BOARDH;
         height = tileSize / 5;
-        speed = (double)tileSize / 120;
+        speed = (double)tileSize / 250;
         position = (double)(height + 1);
     }
     //drawing.

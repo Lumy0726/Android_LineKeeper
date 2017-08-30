@@ -18,10 +18,32 @@ import kr.co.lumylumy.linekeeper.tools.Tools;
  * Created by LMJ on 2017-08-26.
  */
 
-//some helper Class.
+//some helper Interface.
 interface TileUpdateReceiver{ void tileUpdate(); }
 interface TileAllocator{
-    int probabilityDefault = 100;
+
+    //probability.
+    int PROBABILITY_DEFAULT = 100;
+
+    int P_STRAIGHT = PROBABILITY_DEFAULT;
+    int P_STRAIGHT_MUST_LOW = PROBABILITY_DEFAULT / 2;
+    int P_STRAIGHT_MUST_HIGH = PROBABILITY_DEFAULT;
+
+    int P_CURVE = PROBABILITY_DEFAULT * 2;
+    int P_CURVE_MUST_LOW = PROBABILITY_DEFAULT / 4;
+    int P_CURVE_MUST_HIGH = PROBABILITY_DEFAULT / 2;
+
+    int P_PLUS = PROBABILITY_DEFAULT / 3;
+    int P_PLUS_MUST_LOW = PROBABILITY_DEFAULT / 6;
+    int P_PLUS_MUST_HIGH = PROBABILITY_DEFAULT / 3;
+
+    int P_TRIPLE = PROBABILITY_DEFAULT;
+    int P_TRIPLE_MUST_LOW = PROBABILITY_DEFAULT / 6;
+    int P_TRIPLE_MUST_HIGH = PROBABILITY_DEFAULT / 3;
+
+    //level
+    int MAXLEVEL_DEFAULT = 100;
+    //
     int getProbability(int level);
     Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos);
 }
@@ -32,8 +54,9 @@ abstract class Tile implements TimerAble {
     //direction.
     Direction tileDirection = new Direction(Direction.R);
     //tilesize.
-    static int tileSize = 0;
+    static int tileSize = 0, tileSize_2 = 0;
     static int lineWidth = 0;
+    static int tilePos1 = 0, tilePos2 = 0;
     //if moveAble is false, draw this.
     static Bitmap b_UnAbleMove;
     //connect
@@ -53,8 +76,26 @@ abstract class Tile implements TimerAble {
     static int moveSpeed;
     //Canvas's position(tile's middle).
     Coord pos, backupPos;
-    //
-    static final int SCORE_DEFAULT = 100;
+    //some color.
+    static final int COLOR_LINE = MyColor.BLUE;
+    static final int COLOR1 = MyColor.hsvColor(24, 100, 80);
+    static final int COLOR2 = MyColor.hsvColor(24, 100, 50);
+
+    //score
+    interface ScoreValue{
+        int SCORE_DEFAULT = 10;
+
+        int STRAIGHT = SCORE_DEFAULT;
+        int STRAIGHT_ROTATE = SCORE_DEFAULT * 2;
+
+        int CURVE = SCORE_DEFAULT;
+
+        int PLUS = SCORE_DEFAULT * 4;
+        int PLUS_MUST = SCORE_DEFAULT * 8;
+
+        int TRIPLE = SCORE_DEFAULT * 2;
+        int TRIPLE_MUST = SCORE_DEFAULT * 4;
+    }
 
     //constructor.
     Tile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){
@@ -203,7 +244,10 @@ abstract class Tile implements TimerAble {
     static void tileInitialze(int tileSize){
         //size, speed.
         Tile.tileSize = tileSize;
+        tileSize_2 = tileSize / 2;
         lineWidth = tileSize / 5;
+        tilePos1 = (tileSize - lineWidth) / 2;
+        tilePos2 = (tileSize + lineWidth) / 2;
         moveSpeed = tileSize / P_LEVEL;
         //b_UnAbleMove.
         {
@@ -224,6 +268,11 @@ abstract class Tile implements TimerAble {
         Tile_STRAIGHT.makeTileBitmap();
         Tile_STRAIGHT_MUST.makeTileBitmap();
         Tile_CURVE.makeTileBitmap();
+        Tile_CURVE_MUST.makeTileBitmap();
+        Tile_PLUS.makeTileBitmap();
+        Tile_PLUS_MUST.makeTileBitmap();
+        Tile_TRIPLE.makeTileBitmap();
+        Tile_TRIPLE_MUST.makeTileBitmap();
         TileA.makeTileBitmap();
         TileB.makeTileBitmap();
         //TileAllocatorTable.
@@ -231,8 +280,11 @@ abstract class Tile implements TimerAble {
                 Tile_STRAIGHT.getTileAllocator(),
                 Tile_STRAIGHT_MUST.getTileAllocator(),
                 Tile_CURVE.getTileAllocator(),
-                TileA.getTileAllocator(),
-                TileB.getTileAllocator(),
+                Tile_CURVE_MUST.getTileAllocator(),
+                Tile_PLUS.getTileAllocator(),
+                Tile_PLUS_MUST.getTileAllocator(),
+                Tile_TRIPLE.getTileAllocator(),
+                Tile_TRIPLE_MUST.getTileAllocator(),
         };
     }
 
@@ -250,6 +302,10 @@ abstract class Tile implements TimerAble {
     static void tileAllocSeedReset(){ random = new Random(); }
     static void tileAllocSeedReset(long seed){ random.setSeed(seed); }
     static Tile newTile(TileUpdateReceiver tileUpdateClass, Direction tileDirection, Coord tileOutputPos, int level){
+        if (random.nextInt(3) == 0){
+            if (random.nextInt(2) == 0) return new TileA(tileUpdateClass, tileDirection, tileOutputPos);
+            return new TileB(tileUpdateClass, tileDirection, tileOutputPos);
+        }
         int tileIndex = 0, probabilitySum = 0;
         int[] probabilityTable = new int[tileAllocatorTable.length];
         for (int loop1 = 0; loop1 < tileAllocatorTable.length; loop1++){ probabilitySum += (probabilityTable[loop1] = tileAllocatorTable[loop1].getProbability(level)); }
@@ -267,7 +323,7 @@ abstract class Tile implements TimerAble {
     }
 }
 //example of tile.
-
+/*
 class Tile_EX extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
@@ -315,13 +371,13 @@ class Tile_EX extends Tile{
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
         return new TileAllocator(){
             @Override
-            public int getProbability(int level) { return probabilityDefault; }
+            public int getProbability(int level) { return PROBABILITY_DEFAULT; }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_EX(tileUpdateClass, direction, pos); }
         };
     }
 }
-
+*/
 
 class Tile_STRAIGHT extends Tile{
     //Bitmap.
@@ -330,10 +386,9 @@ class Tile_STRAIGHT extends Tile{
     @Override
     void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
         if (!isProcessing && isConnectAll()){
-            int tileSize_2 = tileSize / 2;
             canvas.drawRect(
                     pos.getX() - tileSize_2, pos.getY() - tileSize_2,
-                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(MyColor.BLUE, true)
+                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(COLOR_LINE, true)
             );
         }
     }
@@ -388,9 +443,9 @@ class Tile_STRAIGHT extends Tile{
             switch(tileDirection.get()){
                 case Direction.R:
                 case Direction.L:
-                    return SCORE_DEFAULT * 2;
+                    return ScoreValue.STRAIGHT_ROTATE;
                 default:
-                    return SCORE_DEFAULT;
+                    return ScoreValue.STRAIGHT;
             }
         }
         return 0;
@@ -399,20 +454,19 @@ class Tile_STRAIGHT extends Tile{
         Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
         Canvas canvas = Tools.newCanvas(tileBitmap);
         //draw tile bitmap (Direction U)
-        Tools.resetBitmap(canvas, MyColor.hsvColor(24, 100, 80));
+        Tools.resetBitmap(canvas, COLOR1);
         canvas.drawRect((tileSize - lineWidth) / (float)2, 0, (tileSize + lineWidth) / (float)2, tileSize ,Tools.colorPaint(0, true));
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
         return new TileAllocator(){
             @Override
-            public int getProbability(int level) { return probabilityDefault; }
+            public int getProbability(int level) { return P_STRAIGHT; }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_STRAIGHT(tileUpdateClass, direction, pos); }
         };
     }
 }
-
 class Tile_STRAIGHT_MUST extends Tile_STRAIGHT{
     //Bitmap.
     static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
@@ -426,20 +480,24 @@ class Tile_STRAIGHT_MUST extends Tile_STRAIGHT{
         Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
         Canvas canvas = Tools.newCanvas(tileBitmap);
         //draw tile bitmap (Direction U)
-        Tools.resetBitmap(canvas, MyColor.hsvColor(24, 100, 50));
+        Tools.resetBitmap(canvas, COLOR2);
         canvas.drawRect((tileSize - lineWidth) / (float)2, 0, (tileSize + lineWidth) / (float)2, tileSize ,Tools.colorPaint(0, true));
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
         return new TileAllocator(){
             @Override
-            public int getProbability(int level) { return probabilityDefault / 2; }
+            public int getProbability(int level) {
+                if (level < MAXLEVEL_DEFAULT){
+                    return P_STRAIGHT_MUST_LOW + (P_STRAIGHT_MUST_HIGH - P_STRAIGHT_MUST_LOW) * (level - 1) / (MAXLEVEL_DEFAULT - 1);
+                }
+                else return P_STRAIGHT_MUST_HIGH;
+            }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_STRAIGHT_MUST(tileUpdateClass, direction, pos); }
         };
     }
 }
-
 class Tile_CURVE extends Tile{
     //Bitmap.
     static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
@@ -447,10 +505,9 @@ class Tile_CURVE extends Tile{
     @Override
     void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
         if (!isProcessing && isConnectAll()){
-            int tileSize_2 = tileSize / 2;
             canvas.drawRect(
                     pos.getX() - tileSize_2, pos.getY() - tileSize_2,
-                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(MyColor.BLUE, true)
+                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(COLOR_LINE, true)
             );
         }
     }
@@ -531,24 +588,270 @@ class Tile_CURVE extends Tile{
     }
     @Override
     int connectScore() {//return score.
-        if (isConnectAll()) return SCORE_DEFAULT;
+        if (isConnectAll()) return ScoreValue.CURVE;
         return 0;
     }
     static void makeTileBitmap(){
         Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
         Canvas canvas = Tools.newCanvas(tileBitmap);
         //draw tile bitmap (Direction U)
-        Tools.resetBitmap(canvas, MyColor.hsvColor(24, 100, 80));
-        canvas.drawCircle(0, 0, (tileSize + lineWidth) / (float)2, Tools.colorPaint(0, true));
-        canvas.drawCircle(0, 0, (tileSize - lineWidth) / (float)2, Tools.colorPaint(MyColor.hsvColor(24, 100, 80)));
+        Tools.resetBitmap(canvas, COLOR1);
+        canvas.drawCircle(0, 0, tilePos2, Tools.colorPaint(0, true));
+        canvas.drawCircle(0, 0, tilePos1, Tools.colorPaint(COLOR1));
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
         return new TileAllocator(){
             @Override
-            public int getProbability(int level) { return probabilityDefault; }
+            public int getProbability(int level) { return P_CURVE; }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_CURVE(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_CURVE_MUST extends Tile_CURVE{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_CURVE_MUST(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){
+        super(tileUpdateClass, direction, pos);
+        mustConnect = true;
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        //draw tile bitmap (Direction U)
+        Tools.resetBitmap(canvas, COLOR2);
+        canvas.drawCircle(0, 0, tilePos2, Tools.colorPaint(0, true));
+        canvas.drawCircle(0, 0, tilePos1, Tools.colorPaint(COLOR2));
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TileAllocator(){
+            @Override
+            public int getProbability(int level) {
+                if (level < MAXLEVEL_DEFAULT){
+                    return P_CURVE_MUST_LOW + (P_CURVE_MUST_HIGH - P_CURVE_MUST_LOW) * (level - 1) / (MAXLEVEL_DEFAULT - 1);
+                }
+                else return P_CURVE_MUST_HIGH;
+            }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_CURVE_MUST(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_PLUS extends Tile{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_PLUS(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){ super(tileUpdateClass, direction, pos); }
+    @Override
+    void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
+        if (!isProcessing && isConnectAll()){//for dual line, need more checking about isConnect.
+            canvas.drawRect(
+                    pos.getX() - tileSize_2, pos.getY() - tileSize_2,
+                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(COLOR_LINE, true)
+            );
+        }
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    Direction[] lineFlow(Direction di) {//line flow process. if line is start to flow by this, it will return direction.
+        if (!(isProcessing || isConnectAll())){
+            lineR = lineU = lineL = lineD = true;
+            Direction[] returnValue = new Direction[3];
+            Direction tempDi = new Direction(Direction.R);
+            for (int loop1 = 0, index = 0; loop1 < 4; loop1++){
+                if (!di.equals(tempDi)) returnValue[index++] = new Direction(tempDi);
+                tempDi.rotate(true, 2);
+            }
+            return returnValue;
+        }
+        return new Direction[0];
+    }
+    @Override
+    boolean isLine(Direction di) {//check whether line exist tile's direction.
+        return true;
+    }
+    @Override
+    boolean isConnectAll() {//check whether tile's every line is connected.
+        return lineR;
+    }
+    @Override
+    int connectScore() {//return score.
+        return ScoreValue.PLUS;
+    }
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        Paint paint = Tools.colorPaint(COLOR1);
+        canvas.drawRect(0, 0, tilePos1, tilePos1, paint);
+        canvas.drawRect(tilePos2, 0, tileSize, tilePos1, paint);
+        canvas.drawRect(0, tilePos2, tilePos1, tileSize, paint);
+        canvas.drawRect(tilePos2, tilePos2, tileSize, tileSize, paint);
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TileAllocator(){
+            @Override
+            public int getProbability(int level) { return P_PLUS; }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_PLUS(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_PLUS_MUST extends Tile_PLUS{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_PLUS_MUST(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){
+        super(tileUpdateClass, direction, pos);
+        mustConnect = true;
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    int connectScore() {//return score.
+        return ScoreValue.PLUS_MUST;
+    }
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        int pos1 = (tileSize - lineWidth) / 2, pos2 = (tileSize + lineWidth) / 2;
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        Paint paint = Tools.colorPaint(COLOR2);
+        canvas.drawRect(0, 0, tilePos1, tilePos1, paint);
+        canvas.drawRect(tilePos2, 0, tileSize, tilePos1, paint);
+        canvas.drawRect(0, tilePos2, tilePos1, tileSize, paint);
+        canvas.drawRect(tilePos2, tilePos2, tileSize, tileSize, paint);
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TileAllocator(){
+            @Override
+            public int getProbability(int level) {
+                if (level < MAXLEVEL_DEFAULT){
+                    return P_PLUS_MUST_LOW + (P_PLUS_MUST_HIGH - P_PLUS_MUST_LOW) * (level - 1) / (MAXLEVEL_DEFAULT - 1);
+                }
+                else return P_PLUS_MUST_HIGH;
+            }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_PLUS_MUST(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_TRIPLE extends Tile{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_TRIPLE(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){ super(tileUpdateClass, direction, pos); }
+    @Override
+    void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
+        if (!isProcessing && isConnectAll()){
+            canvas.drawRect(
+                    pos.getX() - tileSize_2, pos.getY() - tileSize_2,
+                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(COLOR_LINE, true)
+            );
+        }
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    Direction[] lineFlow(Direction di) {//line flow process. if line is start to flow by this, it will return direction.
+        if (!isProcessing){
+            if (isLine(di) && !isConnectAll()){
+                switch(tileDirection.get()){
+                    case Direction.R:
+                        lineU = lineL = lineD = true;
+                        break;
+                    case Direction.U:
+                        lineR = lineL = lineD = true;
+                        break;
+                    case Direction.L:
+                        lineR = lineU = lineD = true;
+                        break;
+                    case Direction.D:
+                        lineR = lineU = lineL = true;
+                        break;
+                }
+                Direction[] returnValue = new Direction[2];
+                Direction tempDi = new Direction(Direction.R);
+                for (int loop1 = 0, index = 0; loop1 < 4; loop1++){
+                    if (!(di.equals(tempDi) || tileDirection.equals(tempDi))) returnValue[index++] = new Direction(tempDi);
+                    tempDi.rotate(true, 2);
+                }
+                return returnValue;
+            }
+        }
+        return new Direction[0];
+    }
+    @Override
+    boolean isLine(Direction di) {//check whether line exist tile's direction.
+        return !tileDirection.equals(di);
+    }
+    @Override
+    boolean isConnectAll() {//check whether tile's every line is connected.
+        return lineR || lineU;
+    }
+    @Override
+    int connectScore() {//return score.
+        if (isConnectAll()){
+            return ScoreValue.TRIPLE;
+        }
+        return 0;
+    }
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        Paint paint = Tools.colorPaint(COLOR1);
+        canvas.drawRect(0, 0, tileSize, tilePos1, paint);
+        canvas.drawRect(0, tilePos2, tilePos1, tileSize, paint);
+        canvas.drawRect(tilePos2, tilePos2, tileSize, tileSize, paint);
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TileAllocator(){
+            @Override
+            public int getProbability(int level) { return P_TRIPLE; }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_TRIPLE(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_TRIPLE_MUST extends Tile_TRIPLE{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_TRIPLE_MUST(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){
+        super(tileUpdateClass, direction, pos);
+        mustConnect = true;
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    int connectScore() {//return score.
+        if (isConnectAll()){
+            return ScoreValue.TRIPLE_MUST;
+        }
+        return 0;
+    }
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        Paint paint = Tools.colorPaint(COLOR2);
+        canvas.drawRect(0, 0, tileSize, tilePos1, paint);
+        canvas.drawRect(0, tilePos2, tilePos1, tileSize, paint);
+        canvas.drawRect(tilePos2, tilePos2, tileSize, tileSize, paint);
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TileAllocator(){
+            @Override
+            public int getProbability(int level) {
+                if (level < MAXLEVEL_DEFAULT){
+                    return P_TRIPLE_MUST_LOW + (P_TRIPLE_MUST_HIGH - P_TRIPLE_MUST_LOW) * (level - 1) / (MAXLEVEL_DEFAULT - 1);
+                }
+                else return P_TRIPLE_MUST_HIGH;
+            }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_TRIPLE_MUST(tileUpdateClass, direction, pos); }
         };
     }
 }
@@ -587,7 +890,7 @@ class TileA extends Tile{
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
         return new TileAllocator(){
             @Override
-            public int getProbability(int level) { return probabilityDefault; }
+            public int getProbability(int level) { return PROBABILITY_DEFAULT; }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new TileA(tileUpdateClass, direction, pos); }
         };
@@ -626,7 +929,7 @@ class TileB extends Tile{
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
         return new TileAllocator(){
             @Override
-            public int getProbability(int level) { return probabilityDefault; }
+            public int getProbability(int level) { return PROBABILITY_DEFAULT; }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new TileB(tileUpdateClass, direction, pos); }
         };
