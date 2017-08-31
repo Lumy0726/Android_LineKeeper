@@ -7,6 +7,7 @@ import android.view.MotionEvent;
 
 import java.util.ArrayList;
 
+import kr.co.lumylumy.linekeeper.MainActivity;
 import kr.co.lumylumy.linekeeper.log.LogSystem;
 import kr.co.lumylumy.linekeeper.timer.Timer;
 import kr.co.lumylumy.linekeeper.timer.TimerAble;
@@ -38,7 +39,7 @@ DEBUG.
     ?
 */
 
-public class GameMain implements TimerAble, TouchEvent{
+public class GameMain implements TimerAble, TouchEvent, MainActivity.BackKeyReceiver{
     //resolution.
     static final int WIDTH = 600, HEIGHT = 1066;
     //activity
@@ -125,6 +126,10 @@ public class GameMain implements TimerAble, TouchEvent{
     @Override
     public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
         return gameClass.touchEvent(touchInfo, rawEvent);
+    }
+    @Override
+    public boolean onBackKeyDown() {
+        return gameClass.onBackKeyDown();
     }
 
     //activity state

@@ -17,6 +17,12 @@ public class MainActivity extends AppCompatActivity {
     long backKeyTime;
     //
     GameMain gameMain;
+
+    //onBackKeyDown.
+    public interface BackKeyReceiver{
+        boolean onBackKeyDown();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,11 +45,14 @@ public class MainActivity extends AppCompatActivity {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK){
             long pressTime = SystemClock.elapsedRealtime();
-            int timeDiff = (int)(pressTime - backKeyTime);
-            if (!(0 < timeDiff && timeDiff < 1500)){
-                backKeyTime = pressTime;
-                Tools.simpleToast(getApplicationContext(), "종료하려면 한번더 누르십시오", 1500);
-                return true;
+            if (gameMain.onBackKeyDown()){ return true; }
+            else {
+                int timeDiff = (int)(pressTime - backKeyTime);
+                if (!(0 < timeDiff && timeDiff < 1500)){
+                    backKeyTime = pressTime;
+                    Tools.simpleToast(getApplicationContext(), "종료하려면 한번더 누르십시오", 1500);
+                    return true;
+                }
             }
         }
         return super.onKeyDown(keyCode, event);

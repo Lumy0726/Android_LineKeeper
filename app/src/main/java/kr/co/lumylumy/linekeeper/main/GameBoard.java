@@ -137,13 +137,8 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         canvas.drawBitmap(Bitmap.createBitmap(bitmap_Rotate, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_ROTATER], null);
     }
     void init(){
-        scoreInit();
         //Tile initialize.
         Tile.tileInitialze(tileSize);
-        //Tile.tileAllocSeedReset((long)0);
-        //sweepLine.
-        sweepLine = new SweepLine(this);
-        needLineUpdate = true;
         //
         setTileCyclePanel();
         setControlPanel();
@@ -152,12 +147,24 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         //BitmapBoard.
         b_Board = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888);
         c_Board = Tools.newCanvas(b_Board);
-        //
+        //tilePosExample
         tileExternalPosEx = new Coord(0, 0, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
         tileExternalPosEx.setBorder(0, BOARDW, 0, BOARDH);
-        //Tile allocate.
         tileInternalPosEx = new Coord(0, 0, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
         tileInternalPosEx.setBorder(0, outputWidth, tileSize, tileSize * (BOARDH + 1));
+        //cursorTilePos Coord setting.
+        cursorTilePos = new Coord();
+        cursorTilePos.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CONSTRAINT);
+        cursorTilePos.setBorder(0, BOARDW, 0, BOARDH + 1);
+        reset();
+    }
+
+    //reset.
+    void reset(){
+        //score.
+        scoreLevelReset();
+        //Tile allocate.
+        //Tile.tileAllocSeedReset((long)0);
         int startY = 2;
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < startY; y++){
@@ -184,13 +191,12 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
                 tileAllocate(x, y);
             }
         }
-        //cursorTilePos Coord setting.
-        cursorTilePos = new Coord();
-        cursorTilePos.setMode(Coord.MODE_CONSTRAINT, Coord.MODE_CONSTRAINT);
-        cursorTilePos.setBorder(0, BOARDW, 0, BOARDH + 1);
+        //sweepLine.
+        sweepLine = new SweepLine(this);
+        needLineUpdate = true;
         cursorTilePos.forceOut();
     }
-    void scoreInit(){
+    void scoreLevelReset(){
         gameScore = 0;
         gameLevel = 1;
         clearLineNum = clearTileNum = 0;
@@ -216,6 +222,14 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             coord.setPos(x * tileSize + tileSize / 2, (y + 1) * tileSize + tileSize / 2);
             tile_S[y][x] = new Tile_STRAIGHT(this, new Direction(Direction.U), coord);
             tile_S[y][x].lineFlow(new Direction(Direction.U));
+        }
+    }
+
+    //
+    void changeLevel(int level){
+        if (level > 0){
+            gameLevel = level;
+            sweepLine.setSpeed(level);
         }
     }
 
@@ -326,7 +340,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             //game over.
             sweepLine.newTile();
             //test revival code.
-            scoreInit();
+            scoreLevelReset();
             sweepLine.tilePosition.setPosY((int)sweepLine.position / tileSize);
             sweepLine.restrictTilePosition.setPosY((int)sweepLine.position / tileSize - 1);
             sweepLine.newTile();
@@ -491,9 +505,9 @@ class SweepLine {
         height = tileSize / 5;
         //speed value.
         speed = speedDefault = (double)tileSize / 375;
-        speedHigh = (double)tileSize / 250;
+        speedHigh = (double)tileSize / 218;
         speedIncreaseValue = 1.2;
-        //positiin.
+        //position.
         position = (double)0;
     }
     //drawing.

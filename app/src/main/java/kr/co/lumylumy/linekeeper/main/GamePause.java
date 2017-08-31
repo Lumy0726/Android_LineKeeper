@@ -27,9 +27,10 @@ class GamePause implements GameBase{
     public void onTimer(int id, int sendNum) {
 
     }
-
     @Override
     public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
         return false;
     }
+    @Override
+    public boolean onBackKeyDown() { return false; }
 }

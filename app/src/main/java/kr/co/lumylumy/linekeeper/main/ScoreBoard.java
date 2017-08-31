@@ -41,17 +41,17 @@ class ScoreBoard {
     ScoreBoard(int width, int height){
         this.width = width; this.height = height;
         l_Height = height / 2;
-        l_Width = Tools.textBitmap("0", l_Height, Tools.textPaint(COLOR, l_Height, Paint.Align.LEFT)).getWidth() * 4 / 3;
+        l_Width = Tools.textBitmap("0", l_Height, Tools.colorPaint(COLOR)).getWidth() * 4 / 3;
         init();
     }
     void init(){
         Bitmap bitmap;
         for (int loop1 = 0; loop1 < BASENUMBER; loop1++){
-            bitmap = Tools.textBitmap(loop1 + "", l_Height, Tools.textPaint(COLOR, l_Height, Paint.Align.LEFT));
+            bitmap = Tools.textBitmap(loop1 + "", l_Height, Tools.colorPaint(COLOR));
             b_Number[loop1] = Bitmap.createBitmap(l_Width, l_Height, Bitmap.Config.ARGB_8888);
             Tools.newCanvas(b_Number[loop1]).drawBitmap(bitmap, (l_Width - bitmap.getWidth()) / 2, (l_Height - bitmap.getHeight()) / 2, null);
         }
-        bitmap = Tools.textBitmap("LEVEL:", l_Height, Tools.textPaint(COLOR, l_Height, Paint.Align.LEFT));
+        bitmap = Tools.textBitmap("LEVEL:", l_Height, Tools.colorPaint(COLOR));
         b_LevelStr = Bitmap.createBitmap(bitmap.getWidth(), l_Height, Bitmap.Config.ARGB_8888);
         Tools.newCanvas(b_LevelStr).drawBitmap(bitmap, 0, (l_Height - bitmap.getHeight()) / 2, null);
     }

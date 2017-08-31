@@ -97,6 +97,16 @@ public class Tools {
         return (rValue < 0)? rValue + div: rValue;
     }
     public static int floorByDiv(int value, int div){ return value - remainder(value, div); }
+    //
+    public static void fitRect(int width, int height, int rectWidth, int rectHeight, int[] output){
+        if (output.length == 2){
+            output[0] = 0;//X
+            output[1] = 0;//Y
+            int margin = width - rectWidth * height / rectHeight;
+            if (margin >= 0){ output[0] = margin; }
+            else { output[1] = height - rectHeight * width / rectWidth; }
+        }
+    }
     //Canvas, Bitmap, Paint, Rect.
     public static Rect rectWH(int x, int y, int w, int h){ return new Rect(x, y, x + w, y + h); }
     public static Paint aaPaint(Paint paint){

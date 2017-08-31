@@ -78,26 +78,27 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
                 int h = getHeight();
                 int bitW = bitmap.getWidth();
                 int bitH = bitmap.getHeight();
-                float margin = w - (float)bitW * h / bitH;
-                if (margin > 0){
+                int[] marginValue = new int[2];
+                Tools.fitRect(w, h, bitW, bitH, marginValue);
+                if (marginValue[0] >= 0){
                     switch(bias){
                         case -1:
                             marginX = 0;
-                            rect = new Rect(0, 0, w - (int)margin, h);
+                            rect = new Rect(0, 0, w - marginValue[0], h);
                             break;
                         case 0:
-                            marginX = (int)(margin / 2);
+                            marginX = marginValue[0] / 2;
                             rect = new Rect(marginX, 0, w - marginX, h);
                             break;
                         case 1:
-                            marginX = (int)margin;
+                            marginX = marginValue[0];
                             rect = new Rect(marginX, 0, w, h);
                             break;
                     }
                     ratio = bitH / (float)h;
                 }
                 else {
-                    marginY = h - (int)((float)bitH * w / bitW);
+                    marginY = marginValue[1];
                     rect = new Rect(0, marginY, w, h);
                     ratio = bitW / (float)w;
                 }
