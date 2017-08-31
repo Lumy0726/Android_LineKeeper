@@ -59,7 +59,7 @@ class GamePlay implements GameBase{
         Tools.resetBitmap(gameMain.dv_Canvas, MyColor.WHITE);
         gameBoard.onTimer(id, sendNum);
         gameBoard.draw(gameMain.dv_Canvas);
-        scoreBoard.draw(gameMain.dv_Canvas, gameBoard.gameScore, gameBoard.gameScore / 300 + 1);
+        scoreBoard.draw(gameMain.dv_Canvas, gameBoard.gameScore, gameBoard.gameLevel);
         /*
         Bitmap scoreBitmap = Tools.textBitmap(
                 gameBoard.gameScore + "",

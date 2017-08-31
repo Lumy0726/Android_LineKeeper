@@ -63,8 +63,11 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
     //sweepLine.
     SweepLine sweepLine;
     boolean needLineUpdate;
-    //score.
-    int gameScore;
+    //score etc.
+    static final int MAXLEVEL_DEFAULT = 100;
+    int gameScore, gameLevel;
+    int clearLineNum, clearTileNum;
+    int levelUpLineNum, levelUpTileNum;
 
     //constructor.
     GameBoard(int width){ this(0, 0, width); }
@@ -134,7 +137,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         canvas.drawBitmap(Bitmap.createBitmap(bitmap_Rotate, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_ROTATER], null);
     }
     void init(){
-        gameScore = 0;
+        scoreInit();
         //Tile initialize.
         Tile.tileInitialze(tileSize);
         //Tile.tileAllocSeedReset((long)0);
@@ -187,6 +190,12 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         cursorTilePos.setBorder(0, BOARDW, 0, BOARDH + 1);
         cursorTilePos.forceOut();
     }
+    void scoreInit(){
+        gameScore = 0;
+        gameLevel = 1;
+        clearLineNum = clearTileNum = 0;
+        levelUpLineNum = levelUpTileNum = 0;
+    }
     void tileAllocate(int x, int y){
         if (0 <= x && x < BOARDW && 0 <= y && y < BOARDH){
             Coord coord = new Coord(tileInternalPosEx);
@@ -198,7 +207,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
                 case 2: direction = new Direction(Direction.L); break;
                 case 3: direction = new Direction(Direction.D); break;
             }
-            tile_S[y][x] = Tile.newTile(this, direction, coord, 0);
+            tile_S[y][x] = Tile.newTile(this, direction, coord, gameLevel);
         }
     }
     void startTileAllocate(int x, int y){
@@ -315,9 +324,9 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
     public void onTimer(int id, int sendNum) {
         if (sweepLine.processMain(sendNum)){
             //game over.
-            //test revival code.
-            gameScore = 0;
             sweepLine.newTile();
+            //test revival code.
+            scoreInit();
             sweepLine.tilePosition.setPosY((int)sweepLine.position / tileSize);
             sweepLine.restrictTilePosition.setPosY((int)sweepLine.position / tileSize - 1);
             sweepLine.newTile();
@@ -328,7 +337,32 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             Tools.simpleToast("부활하였습니다.");
             needLineUpdate = true;
         }
-        else { gameScore += sweepLine.getLastProcessScore(); }
+        else {//sweepLine processing complete.
+            if (sweepLine.getLastProcessLineNumber() > 0){
+                boolean isLevelUp = false;
+                gameScore += sweepLine.getLastProcessScore();
+                int lineNum = sweepLine.getLastProcessLineNumber();
+                int tileNum = sweepLine.getLastProcessTileNumber();
+                clearLineNum += lineNum;
+                levelUpLineNum += lineNum;
+                clearTileNum += tileNum;
+                tileNum -= lineNum;
+                if (tileNum > 0) levelUpTileNum += tileNum;
+                if (levelUpLineNum >= BOARDH * 2){
+                    gameLevel += levelUpLineNum / (BOARDH * 2);
+                    levelUpLineNum %= BOARDH * 2;
+                    isLevelUp = true;
+                }
+                if (levelUpTileNum >= BOARDH){
+                    gameLevel += levelUpTileNum / BOARDH;
+                    levelUpTileNum %= BOARDH;
+                    isLevelUp = true;
+                }
+                if (isLevelUp){
+                    sweepLine.setSpeed(gameLevel);
+                }
+            }
+        }
         if (needLineUpdate){ sweepLine.needLineUpdate(); }
         for (int x = 0; x < BOARDW; x++){
             for (int y = 0; y < BOARDH; y++){
@@ -424,12 +458,15 @@ class SweepLine {
     //gameBoard.
     GameBoard gameBoard;
     int tileSize;
-    //process Score.
+    //Score value.
     int score, p_Score;
+    int lineNumber;
+    int tileNumber, p_TileNumber;
     //
     int alphaValue = 0xdd;
     //sweepLine property.
-    double position, speed;
+    double speed, position;
+    double speedDefault, speedHigh, speedIncreaseValue;
     Coord tilePosition, restrictTilePosition;
     int height, cycleHeight;
     //line connecting Info.
@@ -441,16 +478,23 @@ class SweepLine {
 
     //constructor.
     SweepLine(GameBoard input){
+        //gameBoard class(for tile).
         gameBoard = input;
         tileSize = gameBoard.tileSize;
+        //tilePosition.
         tilePosition = new Coord(0, 1, Coord.MODE_CONSTRAINT, Coord.MODE_CYCLE);
         tilePosition.setBorder(0, GameBoard.BOARDW, 0, GameBoard.BOARDH);
         restrictTilePosition = new Coord(tilePosition);
         restrictTilePosition.setPos(0, 0);
+        //sweepLine cycle, height.
         cycleHeight = tileSize * GameBoard.BOARDH;
         height = tileSize / 5;
-        speed = (double)tileSize / 375;
-        position = (double)(height + 1);
+        //speed value.
+        speed = speedDefault = (double)tileSize / 375;
+        speedHigh = (double)tileSize / 250;
+        speedIncreaseValue = 1.2;
+        //positiin.
+        position = (double)0;
     }
     //drawing.
     void draw(Canvas canvas, int margin){
@@ -460,13 +504,21 @@ class SweepLine {
     }
     //
     int getLastProcessScore(){ return score; }
+    int getLastProcessLineNumber(){ return lineNumber; }
+    int getLastProcessTileNumber(){ return tileNumber; }
+    //
+    void setSpeed(int level){
+        if (level > 0){
+            speed = speedHigh - (speedHigh - speedDefault) * Math.pow(speedIncreaseValue, (double)(1 - level));
+        }
+    }
     //entry of process.
     boolean processMain(int sendNum){ return moveLine(sendNum); }
     //
     boolean moveLine(int processNum){
         int tileProcessHeight;//how many game tile's row have to processing.
         position += speed * processNum;
-        score = 0;
+        score = lineNumber = tileNumber = 0;
         tileProcessHeight = (int)position / tileSize - tilePosition.getY();
         if (position >= cycleHeight) position = (double)((int)position % cycleHeight);
         if (processLine(tileProcessHeight)) return true;//Die, game over.
@@ -489,6 +541,8 @@ class SweepLine {
                 }
                 else {
                     score += p_Score;
+                    tileNumber += p_TileNumber;
+                    lineNumber++;
                 }
                 //generate new Tile.
                 newTile();
@@ -520,6 +574,7 @@ class SweepLine {
 
         //
         p_Score = 0;
+        p_TileNumber = 0;
         //reset connect state.
         for (tileX = 0; tileX < GameBoard.BOARDW; tileX++){
             for (int y = 0; y < GameBoard.BOARDH; y++){
@@ -553,7 +608,10 @@ class SweepLine {
                                     tempDirection = new Direction(connectInfo.direction).mirror();
                                     if (gameBoard.tile_S[tempPos.getY()][tempPos.getX()].isLine(tempDirection)){//check lineflow is able.
                                         newFlowDirection = gameBoard.tile_S[tempPos.getY()][tempPos.getX()].lineFlow(tempDirection);
-                                        if (tempPos.getY() == tileY ) p_Score += gameBoard.tile_S[tileY][tempPos.getX()].connectScore();
+                                        if (tempPos.getY() == tileY ){
+                                            p_Score += gameBoard.tile_S[tileY][tempPos.getX()].connectScore();
+                                            p_TileNumber++;
+                                        }
                                     }
                                     else if (tempPos.getY() == tileY) { isConnectSuccess = false; }//lineflow fail.
                                 }

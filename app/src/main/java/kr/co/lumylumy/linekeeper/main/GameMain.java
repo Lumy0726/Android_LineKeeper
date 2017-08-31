@@ -23,9 +23,9 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 ---Job List---
 DEV.
     make many type of tile (extends Tile Class).
-    레벨, 난이도 기능 추가하기.
     불완전하게 연결된 타일 시각적으로 보이도록 하기.
     sweepLine을 사용자가 바로 내리는 기능 추가하기.
+    타일 커서를 방향버튼으로도 움직일 수 있도록 하기.
     게임중 중지 기능 추가하기.
     메인메뉴에 타이틀, 최고기록 표시하기.
     메인메뉴에 설정 관련 추가하기.

@@ -18,34 +18,45 @@ import kr.co.lumylumy.linekeeper.tools.Tools;
  * Created by LMJ on 2017-08-26.
  */
 
-//some helper Interface.
+//some helper Interface, Class.
 interface TileUpdateReceiver{ void tileUpdate(); }
 interface TileAllocator{
 
     //probability.
     int PROBABILITY_DEFAULT = 100;
 
-    int P_STRAIGHT = PROBABILITY_DEFAULT;
-    int P_STRAIGHT_MUST_LOW = PROBABILITY_DEFAULT / 2;
-    int P_STRAIGHT_MUST_HIGH = PROBABILITY_DEFAULT;
+    int P_NOFUNCTION_TILE = 5;
+    int P_CURVE_RESERVED = 5;
 
-    int P_CURVE = PROBABILITY_DEFAULT * 2;
+    int P_STRAIGHT = PROBABILITY_DEFAULT;
+    int P_STRAIGHT_MUST_LOW = PROBABILITY_DEFAULT / 4;
+    int P_STRAIGHT_MUST_HIGH = PROBABILITY_DEFAULT / 2;
+
+    int P_CURVE_START = PROBABILITY_DEFAULT * 3;
+    int P_CURVE_LAST = PROBABILITY_DEFAULT;
     int P_CURVE_MUST_LOW = PROBABILITY_DEFAULT / 4;
     int P_CURVE_MUST_HIGH = PROBABILITY_DEFAULT / 2;
 
     int P_PLUS = PROBABILITY_DEFAULT / 3;
-    int P_PLUS_MUST_LOW = PROBABILITY_DEFAULT / 6;
-    int P_PLUS_MUST_HIGH = PROBABILITY_DEFAULT / 3;
+    int P_PLUS_MUST_LOW = PROBABILITY_DEFAULT / 10;
+    int P_PLUS_MUST_HIGH = PROBABILITY_DEFAULT / 5;
 
     int P_TRIPLE = PROBABILITY_DEFAULT;
-    int P_TRIPLE_MUST_LOW = PROBABILITY_DEFAULT / 6;
-    int P_TRIPLE_MUST_HIGH = PROBABILITY_DEFAULT / 3;
+    int P_TRIPLE_MUST_LOW = PROBABILITY_DEFAULT / 8;
+    int P_TRIPLE_MUST_HIGH = PROBABILITY_DEFAULT / 4;
 
-    //level
-    int MAXLEVEL_DEFAULT = 100;
     //
     int getProbability(int level);
     Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos);
+}
+abstract class TA_LinearProbability implements TileAllocator{
+    static int linear(int level, int low, int addProbability, int addLevel){ return low + (level - 1) * addProbability / addLevel; }
+    static int linearMaxLevel(int level, int low, int high, int maxLevel){
+        if (level < maxLevel){
+            return low + (high - low) * (level - 1) / (maxLevel - 1);
+        }
+        else return high;
+    }
 }
 //Tile class
 abstract class Tile implements TimerAble {
@@ -302,10 +313,14 @@ abstract class Tile implements TimerAble {
     static void tileAllocSeedReset(){ random = new Random(); }
     static void tileAllocSeedReset(long seed){ random.setSeed(seed); }
     static Tile newTile(TileUpdateReceiver tileUpdateClass, Direction tileDirection, Coord tileOutputPos, int level){
-        if (random.nextInt(3) == 0){
+        //allocate non-functionTile block.
+        if (random.nextInt(TileAllocator.P_NOFUNCTION_TILE) == 0){
             if (random.nextInt(2) == 0) return new TileA(tileUpdateClass, tileDirection, tileOutputPos);
             return new TileB(tileUpdateClass, tileDirection, tileOutputPos);
         }
+        //allocate reserved curve tile.
+        if (random.nextInt(TileAllocator.P_CURVE_RESERVED) == 0){ return new Tile_CURVE(tileUpdateClass, tileDirection, tileOutputPos); }
+        //allocate.
         int tileIndex = 0, probabilitySum = 0;
         int[] probabilityTable = new int[tileAllocatorTable.length];
         for (int loop1 = 0; loop1 < tileAllocatorTable.length; loop1++){ probabilitySum += (probabilityTable[loop1] = tileAllocatorTable[loop1].getProbability(level)); }
@@ -485,14 +500,9 @@ class Tile_STRAIGHT_MUST extends Tile_STRAIGHT{
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
-        return new TileAllocator(){
+        return new TA_LinearProbability(){
             @Override
-            public int getProbability(int level) {
-                if (level < MAXLEVEL_DEFAULT){
-                    return P_STRAIGHT_MUST_LOW + (P_STRAIGHT_MUST_HIGH - P_STRAIGHT_MUST_LOW) * (level - 1) / (MAXLEVEL_DEFAULT - 1);
-                }
-                else return P_STRAIGHT_MUST_HIGH;
-            }
+            public int getProbability(int level) { return linearMaxLevel(level, P_STRAIGHT_MUST_LOW, P_STRAIGHT_MUST_HIGH, GameBoard.MAXLEVEL_DEFAULT); }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_STRAIGHT_MUST(tileUpdateClass, direction, pos); }
         };
@@ -601,9 +611,9 @@ class Tile_CURVE extends Tile{
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
-        return new TileAllocator(){
+        return new TA_LinearProbability(){
             @Override
-            public int getProbability(int level) { return P_CURVE; }
+            public int getProbability(int level) { return linearMaxLevel(level, P_CURVE_START, P_CURVE_LAST, GameBoard.MAXLEVEL_DEFAULT); }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_CURVE(tileUpdateClass, direction, pos); }
         };
@@ -628,14 +638,9 @@ class Tile_CURVE_MUST extends Tile_CURVE{
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
-        return new TileAllocator(){
+        return new TA_LinearProbability(){
             @Override
-            public int getProbability(int level) {
-                if (level < MAXLEVEL_DEFAULT){
-                    return P_CURVE_MUST_LOW + (P_CURVE_MUST_HIGH - P_CURVE_MUST_LOW) * (level - 1) / (MAXLEVEL_DEFAULT - 1);
-                }
-                else return P_CURVE_MUST_HIGH;
-            }
+            public int getProbability(int level) { return linearMaxLevel(level, P_CURVE_MUST_LOW, P_CURVE_MUST_HIGH, GameBoard.MAXLEVEL_DEFAULT); }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_CURVE_MUST(tileUpdateClass, direction, pos); }
         };
@@ -726,14 +731,9 @@ class Tile_PLUS_MUST extends Tile_PLUS{
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
-        return new TileAllocator(){
+        return new TA_LinearProbability(){
             @Override
-            public int getProbability(int level) {
-                if (level < MAXLEVEL_DEFAULT){
-                    return P_PLUS_MUST_LOW + (P_PLUS_MUST_HIGH - P_PLUS_MUST_LOW) * (level - 1) / (MAXLEVEL_DEFAULT - 1);
-                }
-                else return P_PLUS_MUST_HIGH;
-            }
+            public int getProbability(int level) { return linearMaxLevel(level, P_PLUS_MUST_LOW, P_PLUS_MUST_HIGH, GameBoard.MAXLEVEL_DEFAULT); }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_PLUS_MUST(tileUpdateClass, direction, pos); }
         };
@@ -842,14 +842,9 @@ class Tile_TRIPLE_MUST extends Tile_TRIPLE{
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
     static TileAllocator getTileAllocator(){//return TileAllocator interface.
-        return new TileAllocator(){
+        return new TA_LinearProbability(){
             @Override
-            public int getProbability(int level) {
-                if (level < MAXLEVEL_DEFAULT){
-                    return P_TRIPLE_MUST_LOW + (P_TRIPLE_MUST_HIGH - P_TRIPLE_MUST_LOW) * (level - 1) / (MAXLEVEL_DEFAULT - 1);
-                }
-                else return P_TRIPLE_MUST_HIGH;
-            }
+            public int getProbability(int level) { return linearMaxLevel(level, P_TRIPLE_MUST_LOW, P_TRIPLE_MUST_HIGH, GameBoard.MAXLEVEL_DEFAULT); }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_TRIPLE_MUST(tileUpdateClass, direction, pos); }
         };
