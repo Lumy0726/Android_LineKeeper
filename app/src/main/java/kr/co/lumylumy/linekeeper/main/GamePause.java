@@ -11,15 +11,23 @@ import kr.co.lumylumy.linekeeper.tools.TouchInfo;
 class GamePause implements GameBase{
     //gameMain.
     GameMain gameMain;
+    //gamePlay.
+    GamePlay gamePlay;
 
     //constructer
-    public GamePause(GameMain gameMain){
+    public GamePause(GameMain gameMain, GamePlay gamePlay){
         this.gameMain = gameMain;
+        this.gamePlay = gamePlay;
     }
 
     @Override
     public void onStart() {
-
+        //test code - save score and return to menu.
+        int bestScore = gameMain.loadScore();
+        if (gamePlay.gameBoard.gameScore > bestScore){
+            gameMain.saveScore(gamePlay.gameBoard.gameScore);
+        }
+        gameMain.setGameState(GameMain.GSTATE_MENU);
     }
 
     //Timer/Touch input.

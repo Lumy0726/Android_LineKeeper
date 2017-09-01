@@ -5,6 +5,11 @@ import android.graphics.Canvas;
 import android.support.v7.app.AppCompatActivity;
 import android.view.MotionEvent;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import kr.co.lumylumy.linekeeper.MainActivity;
@@ -28,7 +33,6 @@ DEV.
     sweepLine을 사용자가 바로 내리는 기능 추가하기.
     타일 커서를 방향버튼으로도 움직일 수 있도록 하기.
     게임중 중지 기능 추가하기.
-    메인메뉴에 타이틀, 최고기록 표시하기.
     메인메뉴에 설정 관련 추가하기.
 
     make image of tile.
@@ -40,6 +44,8 @@ DEBUG.
 */
 
 public class GameMain implements TimerAble, TouchEvent, MainActivity.BackKeyReceiver{
+    //file
+    static final String FILE_SCORE = "Score.dat";
     //resolution.
     static final int WIDTH = 600, HEIGHT = 1066;
     //activity
@@ -96,7 +102,7 @@ public class GameMain implements TimerAble, TouchEvent, MainActivity.BackKeyRece
         //GameClass.
         gameMenu = new GameMenu(this);
         gamePlay = new GamePlay(this);
-        gamePause = new GamePause(this);
+        gamePause = new GamePause(this, gamePlay);
         //gameState
         setGameState(GSTATE_MENU);
     }
@@ -117,6 +123,33 @@ public class GameMain implements TimerAble, TouchEvent, MainActivity.BackKeyRece
         timer.stop();
         activity.finish();
     }
+
+    //
+    int loadScore(){
+        int score = -1;
+        FileInputStream fInS = Tools.getFileInternal(FILE_SCORE);
+        if (fInS != null){
+            DataInputStream dInS = new DataInputStream(fInS);
+            try{
+                score = dInS.readInt();
+                dInS.close();
+            }
+            catch (IOException e){}
+        }
+        return score;
+    }
+    void saveScore(int score){
+        FileOutputStream fOutS = Tools.makeFileInternal(FILE_SCORE);
+        if (fOutS != null){
+            DataOutputStream dOutS = new DataOutputStream(fOutS);
+            try{
+                dOutS.writeInt(score);
+                fOutS.close();
+            }
+            catch (IOException e){}
+        }
+    }
+
 
     //Timer/Touch input.
     @Override

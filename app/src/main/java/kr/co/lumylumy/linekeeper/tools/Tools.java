@@ -4,7 +4,9 @@ package kr.co.lumylumy.linekeeper.tools;
  * Created by LMJ on 2017-08-07.
  */
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -12,20 +14,28 @@ import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+
 import kr.co.lumylumy.linekeeper.timer.Timer;
 import kr.co.lumylumy.linekeeper.timer.TimerAble;
 
 public class Tools {
+    static AppCompatActivity appCompatActivity;
     static DisplayMetrics displayMetrics;
     static Context context;
 
     //Tools_initial
     public static void tools_initial(AppCompatActivity input){
+        appCompatActivity = input;
         dipToPixInit(input.getResources().getDisplayMetrics());
         simpleToastInit(input.getApplicationContext());
     }
@@ -60,6 +70,47 @@ public class Tools {
                 0,
                 time
         );
+    }
+    //File.
+    public static boolean checkWriteExternalPer(){
+        if (appCompatActivity != null){
+            int permissionCheck = ContextCompat.checkSelfPermission(appCompatActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            if (permissionCheck == PackageManager.PERMISSION_GRANTED) return true;
+        }
+        return false;
+    }
+    public static boolean getWriteExternalPer(){
+        if (checkWriteExternalPer()) return true;
+        if (appCompatActivity != null){ ActivityCompat.requestPermissions(appCompatActivity, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1); }
+        return checkWriteExternalPer();
+    }
+    public static FileInputStream getFileInternal(String filename){ return getFileInternal(null, filename); }
+    public static FileInputStream getFileInternal(String dir, String filename){
+        FileInputStream fInS = null;
+        if (appCompatActivity != null){
+            try{
+                if (dir == null) dir = appCompatActivity.getFilesDir().getCanonicalPath();
+                else dir = appCompatActivity.getFilesDir().getCanonicalPath() + dir;
+                fInS = new FileInputStream(new File(dir, filename));
+            }
+            catch (Exception e){}
+        }
+        return fInS;
+    }
+    public static FileOutputStream makeFileInternal(String filename){ return makeFileInternal(null, filename); }
+    public static FileOutputStream makeFileInternal(String dir, String filename){
+        FileOutputStream fOutS = null;
+        if (appCompatActivity != null){
+            try{
+                if (dir == null) dir = appCompatActivity.getFilesDir().getCanonicalPath();
+                else dir = appCompatActivity.getFilesDir().getCanonicalPath() + dir;
+                File file = new File(dir, filename);
+                if (file.exists()) file.delete();
+                if (file.createNewFile()){ fOutS = new FileOutputStream(file); }
+            }
+            catch (Exception e){}
+        }
+        return fOutS;
     }
     //Path.
     public static Path polyPath(float[] x, float[] y){

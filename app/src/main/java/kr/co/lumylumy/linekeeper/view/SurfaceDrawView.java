@@ -125,6 +125,10 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
     public float getRatio(){ return ratio; }
     public int getMarginX(){ return marginX; }
     public int getMarginY(){ return marginY; }
+    public Bitmap copyCurBitmap(){
+        if (bitmap == null) return null;
+        return Bitmap.createBitmap(bitmap);
+    }
     public void update() {
         if (bitmap != null) {
             //long time = SystemClock.elapsedRealtime();

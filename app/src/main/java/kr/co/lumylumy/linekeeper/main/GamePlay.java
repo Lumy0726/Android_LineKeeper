@@ -31,6 +31,9 @@ class GamePlay implements GameBase{
     ScoreBoard scoreBoard;
     //TouchEvent.
     ArrayList<TouchInfo> touchInfo_S = new ArrayList<>();
+    //state.
+    static final int STATE_PLAY = 0, STATE_PAUSE = 1, STATE_DIE = 2;
+    int state;
 
     //constructer
     public GamePlay(GameMain gameMain){
@@ -44,13 +47,19 @@ class GamePlay implements GameBase{
         gameBoardW = gameBoard.outputWidth; gameBoardH = gameBoard.outputHeight;
         gameBoardMargin = dv_Height - gameBoardH;
         scoreBoard = new ScoreBoard(dv_Width * 8 / 10, gameBoardMargin);
+        state = STATE_PLAY;
     }
     @Override
     public void onStart() {
         Canvas canvas = gameMain.dv_Canvas;
         canvas.drawColor(MyColor.WHITE);
+        if (state == STATE_DIE) gameBoard.reset();
+        else if (state == STATE_PAUSE){
+            //code - resume game countdown.
+        }
         gameBoard.draw(gameMain.dv_Canvas);
         gameMain.drawView.update();
+        state = STATE_PLAY;
     }
 
     //Timer/Touch input.
@@ -65,15 +74,11 @@ class GamePlay implements GameBase{
         gameBoard.onTimer(id, sendNum);
         gameBoard.draw(gameMain.dv_Canvas);
         scoreBoard.draw(gameMain.dv_Canvas, gameBoard.gameScore, gameBoard.gameLevel);
-        /*
-        Bitmap scoreBitmap = Tools.textBitmap(
-                gameBoard.gameScore + "",
-                gameBoardMargin,
-                Tools.textPaint(MyColor.BLACK, gameBoardMargin, Paint.Align.LEFT)
-        );
-        gameMain.dv_Canvas.drawBitmap(scoreBitmap, 0, 0, null);
-        */
         gameMain.drawView.update();
+        if (gameBoard.isDie){
+            state = STATE_DIE;
+            gameMain.setGameState(GameMain.GSTATE_PAUSE);
+        }
     }
 
     @Override

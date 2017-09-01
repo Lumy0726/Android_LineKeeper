@@ -39,6 +39,9 @@ public class GameMenu implements GameBase {
     //
     Bitmap background;
 
+    //
+    int bestScore;
+
     //constructer
     public GameMenu(GameMain gameMain) {
         this.gameMain = gameMain;
@@ -64,7 +67,8 @@ public class GameMenu implements GameBase {
             menuY += (menuHeight + marginHeight);
         }
         //scoreBar.
-        addDisplayObject(new ScoreBar(DO_SCOREBAR, (width - menuWidth) / 2, 0, menuWidth, scoreBarHeight, 123456));
+        bestScore = 0;
+        addDisplayObject(new ScoreBar(DO_SCOREBAR, (width - menuWidth) / 2, 0, menuWidth, scoreBarHeight, bestScore));
         //Background.
         background = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             //Background - tileBitmap;
@@ -99,6 +103,11 @@ public class GameMenu implements GameBase {
     }
     @Override
     public void onStart() {
+        int lScore = gameMain.loadScore();
+        if (lScore != -1) bestScore = lScore;//load complete.
+        if (displayObjects[MENU_NUM] instanceof ScoreBar){
+            ((ScoreBar)displayObjects[MENU_NUM]).changeScore(bestScore);
+        }
         Canvas dv_Canvas = gameMain.dv_Canvas;
         dv_Canvas.drawBitmap(background, 0, 0, null);
         for (int loop1 = 0; loop1 < DO_NUM; loop1++) {

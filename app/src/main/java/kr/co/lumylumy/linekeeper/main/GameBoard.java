@@ -68,6 +68,8 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
     int gameScore, gameLevel;
     int clearLineNum, clearTileNum;
     int levelUpLineNum, levelUpTileNum;
+    //
+    boolean isDie;
 
     //constructor.
     GameBoard(int width){ this(0, 0, width); }
@@ -163,6 +165,9 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
     void reset(){
         //score.
         scoreLevelReset();
+        //
+        isDie = false;
+        touchInput.clear();
         //Tile allocate.
         //Tile.tileAllocSeedReset((long)0);
         int startY = 2;
@@ -336,56 +341,73 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
     //timer, touch.
     @Override
     public void onTimer(int id, int sendNum) {
-        if (sweepLine.processMain(sendNum)){
-            //game over.
-            sweepLine.newTile();
-            //test revival code.
-            scoreLevelReset();
-            sweepLine.tilePosition.setPosY((int)sweepLine.position / tileSize);
-            sweepLine.restrictTilePosition.setPosY((int)sweepLine.position / tileSize - 1);
-            sweepLine.newTile();
-            startTileAllocate(0, sweepLine.restrictTilePosition.getY());
-            for (int tileY = sweepLine.restrictTilePosition.getY(), tileX = 0; tileX < BOARDW; tileX++){
-                tile_S[tileY][tileX].moveAble = false;
+        if (!isDie) {
+            if (sweepLine.processMain(sendNum)) {
+                //game over.
+                isDie = true;
+                //test revival code
+                /*
+                sweepLine.newTile();
+                scoreLevelReset();
+                sweepLine.tilePosition.setPosY((int)sweepLine.position / tileSize);
+                sweepLine.restrictTilePosition.setPosY((int)sweepLine.position / tileSize - 1);
+                sweepLine.newTile();
+                startTileAllocate(0, sweepLine.restrictTilePosition.getY());
+                for (int tileY = sweepLine.restrictTilePosition.getY(), tileX = 0; tileX < BOARDW; tileX++){
+                    tile_S[tileY][tileX].moveAble = false;
+                }
+                Tools.simpleToast("부활하였습니다.");
+                needLineUpdate = true;
+                */
             }
-            Tools.simpleToast("부활하였습니다.");
-            needLineUpdate = true;
-        }
-        else {//sweepLine processing complete.
-            if (sweepLine.getLastProcessLineNumber() > 0){
-                boolean isLevelUp = false;
-                gameScore += sweepLine.getLastProcessScore();
-                int lineNum = sweepLine.getLastProcessLineNumber();
-                int tileNum = sweepLine.getLastProcessTileNumber();
-                clearLineNum += lineNum;
-                levelUpLineNum += lineNum;
-                clearTileNum += tileNum;
-                tileNum -= lineNum;
-                if (tileNum > 0) levelUpTileNum += tileNum;
-                if (levelUpLineNum >= BOARDH * 2){
-                    gameLevel += levelUpLineNum / (BOARDH * 2);
-                    levelUpLineNum %= BOARDH * 2;
-                    isLevelUp = true;
-                }
-                if (levelUpTileNum >= BOARDH){
-                    gameLevel += levelUpTileNum / BOARDH;
-                    levelUpTileNum %= BOARDH;
-                    isLevelUp = true;
-                }
-                if (isLevelUp){
-                    sweepLine.setSpeed(gameLevel);
+            else {//sweepLine processing complete.
+                if (sweepLine.getLastProcessLineNumber() > 0) {
+                    boolean isLevelUp = false;
+                    gameScore += sweepLine.getLastProcessScore();
+                    int lineNum = sweepLine.getLastProcessLineNumber();
+                    int tileNum = sweepLine.getLastProcessTileNumber();
+                    clearLineNum += lineNum;
+                    levelUpLineNum += lineNum;
+                    clearTileNum += tileNum;
+                    tileNum -= lineNum;
+                    if (tileNum > 0) levelUpTileNum += tileNum;
+                    if (levelUpLineNum >= BOARDH * 2) {
+                        gameLevel += levelUpLineNum / (BOARDH * 2);
+                        levelUpLineNum %= BOARDH * 2;
+                        isLevelUp = true;
+                    }
+                    if (levelUpTileNum >= BOARDH) {
+                        gameLevel += levelUpTileNum / BOARDH;
+                        levelUpTileNum %= BOARDH;
+                        isLevelUp = true;
+                    }
+                    if (isLevelUp) {
+                        sweepLine.setSpeed(gameLevel);
+                    }
                 }
             }
-        }
-        if (needLineUpdate){ sweepLine.needLineUpdate(); }
-        for (int x = 0; x < BOARDW; x++){
-            for (int y = 0; y < BOARDH; y++){
-                tile_S[y][x].onTimer(id, sendNum);
+            if (needLineUpdate) {
+                sweepLine.needLineUpdate();
+            }
+            if (isDie){
+                for (int x = 0; x < BOARDW; x++) {
+                    for (int y = 0; y < BOARDH; y++) {
+                        tile_S[y][x].forceCloseProcess();
+                    }
+                }
+            }
+            else {
+                for (int x = 0; x < BOARDW; x++) {
+                    for (int y = 0; y < BOARDH; y++) {
+                        tile_S[y][x].onTimer(id, sendNum);
+                    }
+                }
             }
         }
     }
     @Override
     public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
+        if (isDie) return true;
         TouchInfo t_Info = null;
         Iterator<TouchInfo> it;
         boolean flag;
