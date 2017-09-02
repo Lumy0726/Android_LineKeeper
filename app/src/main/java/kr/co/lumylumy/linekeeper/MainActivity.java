@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
                 int timeDiff = (int)(pressTime - backKeyTime);
                 if (!(0 < timeDiff && timeDiff < 1500)){
                     backKeyTime = pressTime;
-                    Tools.simpleToast(getApplicationContext(), "종료하려면 한번더 누르십시오", 1500);
+                    Tools.simpleToast(getApplicationContext(), "강제 종료하려면 한번더 누르십시오", 1500);
                     return true;
                 }
             }

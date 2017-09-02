@@ -32,7 +32,6 @@ DEV.
     불완전하게 연결된 타일 시각적으로 보이도록 하기.
     sweepLine을 사용자가 바로 내리는 기능 추가하기.
     타일 커서를 방향버튼으로도 움직일 수 있도록 하기.
-    게임중 중지 기능 추가하기.
     메인메뉴에 설정 관련 추가하기.
 
     make image of tile.
@@ -52,6 +51,7 @@ public class GameMain implements TimerAble, TouchEvent, MainActivity.BackKeyRece
     AppCompatActivity activity;
     //Timer.
     static final int TIMERID_MAIN = 0;
+    static final int TIMERPERIOD_MAIN = 16;
     Timer timer;
     //SurfaceDrawView.
     SurfaceDrawView drawView;
@@ -85,7 +85,7 @@ public class GameMain implements TimerAble, TouchEvent, MainActivity.BackKeyRece
     void init(){
         //Timer.
         timer = new Timer(this);
-        timer.add(TIMERID_MAIN, 16);
+        timer.add(TIMERID_MAIN, TIMERPERIOD_MAIN);
         //DrawView.
         drawView.setTouchEventClass(this);
         drawView.setFpsOutput(true);//test code.

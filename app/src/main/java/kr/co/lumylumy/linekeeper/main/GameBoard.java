@@ -238,6 +238,9 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         }
     }
 
+    //
+    int getTileOutputHeight(){ return tileOutputHeight; }
+
     //canvas draw.
     //TimeCheck time_I = new TimeCheck();
     //TimeCheck time_D = new TimeCheck();
@@ -471,9 +474,9 @@ class SweepLine {
         cycleHeight = tileSize * GameBoard.BOARDH;
         height = tileSize / 5;
         //speed value.
-        speed = speedDefault = (double)tileSize / 375;
-        speedHigh = (double)tileSize / 218;
-        speedIncreaseValue = 1.2;
+        speed = speedDefault = (double)tileSize / (6000 / GameMain.TIMERPERIOD_MAIN);
+        speedHigh = (double)tileSize / (3500 / GameMain.TIMERPERIOD_MAIN);
+        speedIncreaseValue = 1.15;
         //position.
         position = (double)0;
     }

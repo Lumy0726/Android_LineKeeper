@@ -44,7 +44,7 @@ public class GameMenu implements GameBase {
     int bestScore;
 
     //constructer
-    public GameMenu(GameMain gameMain) {
+    GameMenu(GameMain gameMain) {
         this.gameMain = gameMain;
         init();
     }

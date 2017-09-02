@@ -40,7 +40,7 @@ class GamePlay implements GameBase{
     int state;
 
     //constructer
-    public GamePlay(GameMain gameMain){
+    GamePlay(GameMain gameMain){
         this.gameMain = gameMain;
         init();
     }
@@ -57,6 +57,15 @@ class GamePlay implements GameBase{
         pauseButton.setPos(scoreBoardWidth + pauseButtonMargin, (gameBoardMargin - pauseButton.height) / 2);
         state = STATE_PLAY;
     }
+
+    //
+    void saveScore(){
+        int bestScore = gameMain.loadScore();
+        if (gameBoard.gameScore > bestScore){
+            gameMain.saveScore(gameBoard.gameScore);
+        }
+    }
+
     @Override
     public void onStart() {
         Canvas canvas = gameMain.dv_Canvas;
@@ -113,6 +122,7 @@ class GamePlay implements GameBase{
                             if (pauseButton.inObject(t_Info.x, t_Info.y)){
                                 if (pauseButton.inObject(touchInfo.x, touchInfo.y)){
                                     state = STATE_PAUSE;
+                                    saveScore();
                                     gameMain.setGameState(GameMain.GSTATE_PAUSE);
                                 }
                                 return true;
