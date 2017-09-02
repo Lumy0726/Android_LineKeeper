@@ -25,11 +25,12 @@ public class GameMenu implements GameBase {
     GameMain gameMain;
 
     //DisplayObject.
-    static final int MENU_NUM = 4;
+    static final int MENU_NUM = 5;
     static final String MENU_START = "Menu_Start";
     static final String MENU_EXIT = "Menu_Exit";
     static final String MENU_START50 = "Menu_Start50";
     static final String MENU_START100 = "Menu_Start100";
+    static final String MENU_SETTING = "Menu_Setting";
     static final int SCOREBAR_NUM = 1;
     static final String DO_SCOREBAR = "DO_ScoreBar";
     static final int DO_NUM = MENU_NUM + SCOREBAR_NUM;
@@ -62,6 +63,7 @@ public class GameMenu implements GameBase {
         addDisplayObject(new Menu(MENU_EXIT, "종료하기", menuWidth, menuHeight, menuWidth / 8));
         addDisplayObject(new Menu(MENU_START50, "50L시작(test)", menuWidth, menuHeight, menuWidth / 8));
         addDisplayObject(new Menu(MENU_START100, "100L시작(test)", menuWidth, menuHeight, menuWidth / 8));
+        addDisplayObject(new Menu(MENU_SETTING, "설정", menuWidth, menuHeight, menuWidth / 8));
         for (int loop1 = 0; loop1 < MENU_NUM; loop1++) {
             displayObjects[loop1].setPos(menuX, menuY);
             menuY += (menuHeight + marginHeight);
@@ -181,68 +183,24 @@ public class GameMenu implements GameBase {
     }
 }
 
-class Menu extends DisplayObject{
-    int width, height, edgeWidth;
-    int touchId;
-    boolean touchState = false;
-
-    Menu(String name, String str, int width, int height, int edgeWidth) {
-        this(name, str, 0, 0, width, height, edgeWidth);
-    }
-
+class Menu extends DO_HexView{
+    Menu(String name, String str, int width, int height, int edgeWidth) { this(name, str, 0, 0, width, height, edgeWidth); }
     Menu(String name, String str, int xPos, int yPos, int width, int height, int edgeWidth) {
-        super(name);
-        displayBitmap = Bitmap.createBitmap(this.width = width, this.height = height, Bitmap.Config.ARGB_8888);
-        setPos(xPos, yPos);
-        Canvas canvas = Tools.newCanvas(displayBitmap);
-        Path path = new Path();
-        path.moveTo(edgeWidth, 0);
-        path.lineTo(width - edgeWidth, 0);
-        path.lineTo(width, height / (float) 2);
-        path.lineTo(width - edgeWidth, height);
-        path.lineTo(edgeWidth, height);
-        path.lineTo(0, height / (float) 2);
-        path.close();
-        Paint paint = new Paint();
-        paint.setStyle(Paint.Style.FILL);
-        paint.setShader(new LinearGradient(0, 0, 0, height, MyColor.hsvColor(68, 100, 100), MyColor.hsvColor(68, 80, 50), Shader.TileMode.CLAMP));
-        canvas.drawPath(path, paint);
-        Bitmap tBitmap = Tools.textBitmap(str, height, Tools.aaPaint(Tools.colorPaint(MyColor.BLUE)));
-        int[] fitXY = new int[2];
-        Tools.fitRect(width - edgeWidth * 2, height, tBitmap.getWidth(), tBitmap.getHeight(), fitXY);
-        canvas.drawBitmap(
-                tBitmap,
-                null,
-                new Rect(edgeWidth + fitXY[0] / 2, fitXY[1] / 2, width - edgeWidth - fitXY[0] / 2, height - fitXY[1] / 2),
-                null);
-        displayBitmapTouch = Bitmap.createBitmap(displayBitmap);
-        canvas.setBitmap(displayBitmapTouch);
-        canvas.drawColor(MyColor.aColor(0x7f, MyColor.hsvColor(0, 0, 50)), PorterDuff.Mode.SRC_ATOP);
-        this.edgeWidth = edgeWidth;
-    }
-    @Override
-    void setPos(int x, int y) {
-        xPos = x; yPos = y;
-        outputRect = Tools.rectWH(x, y, width, height);
-    }
-    @Override
-    boolean inObject(float x, float y) {
-        if (outputRect.top <= (int) y && (int) y < outputRect.bottom) {
-            if (outputRect.left <= (int) x && (int) x < outputRect.right) {
-                if (outputRect.left + edgeWidth <= (int) x && (int) x < outputRect.right - edgeWidth)
-                    return true;
-                if ((int) x < outputRect.left + edgeWidth) {
-                    if (Tools.dotIsRight(x, y, outputRect.left, outputRect.exactCenterY(), outputRect.left + edgeWidth, outputRect.top) &&
-                            Tools.dotIsRight(x, y, outputRect.left + edgeWidth, outputRect.bottom, outputRect.left, outputRect.exactCenterY())
-                            ) return true;
-                } else if (Tools.dotIsRight(x, y, outputRect.right - edgeWidth, outputRect.top, outputRect.right, outputRect.exactCenterY()) &&
-                        Tools.dotIsRight(x, y, outputRect.right, outputRect.exactCenterY(), outputRect.right - edgeWidth, outputRect.bottom)
-                        ) return true;
-            }
-        }
-        return false;
+        super(
+                name, str,
+                xPos, yPos,
+                width, height, edgeWidth,
+                new Paint(){
+                    Paint f(int height){
+                        setShader(new LinearGradient(0, 0, 0, height, MyColor.hsvColor(68, 100, 100), MyColor.hsvColor(68, 80, 50), Shader.TileMode.CLAMP));
+                        return this;
+                    }
+                }.f(height),
+                MyColor.BLUE
+        );
     }
 }
+
 class ScoreBar extends DisplayObject{
     int width, height;
     int height_2;
@@ -254,7 +212,7 @@ class ScoreBar extends DisplayObject{
         scoreBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = Tools.newCanvas(scoreBitmap);
         float radius = height / (float)6;
-        canvas.drawBitmap(Tools.roundRectBitmap(width, height, radius, MyColor.aColor(0x90, MyColor.hsvColor(120, 60, 100))), 0, 0, null);
+        canvas.drawBitmap(Tools.roundRectBitmap(width, height, radius, MyColor.hsvColor(0x90, 120, 60, 100)), 0, 0, null);
         height_2 = height / 2;
         Bitmap tBitmap = Tools.textBitmap("BEST SCORE:", height_2, Tools.colorPaint(MyColor.BLACK));
         canvas.drawBitmap(tBitmap, (width - tBitmap.getWidth()) / 2, (height_2 - tBitmap.getHeight()) / 2, null);
@@ -265,6 +223,12 @@ class ScoreBar extends DisplayObject{
         Bitmap tempBitmap = Tools.textBitmap(score + "", height_2, Tools.colorPaint(MyColor.BLACK));
         displayBitmap = Bitmap.createBitmap(scoreBitmap);
         Tools.newCanvas(displayBitmap).drawBitmap(tempBitmap, (width - tempBitmap.getWidth()) / 2, height_2 + (height_2 - tempBitmap.getHeight()) / 2, null);
+    }
+
+    @Override
+    void draw(Canvas canvas) {
+        //Do not draw displayBitmapTouch.
+        canvas.drawBitmap(displayBitmap, null, outputRect, null);
     }
     @Override
     void setPos(int x, int y) {

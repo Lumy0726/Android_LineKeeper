@@ -52,8 +52,8 @@ class ScoreBoard {
             Tools.newCanvas(b_Number[loop1]).drawBitmap(bitmap, (l_Width - bitmap.getWidth()) / 2, (l_Height - bitmap.getHeight()) / 2, null);
         }
         bitmap = Tools.textBitmap("LEVEL:", l_Height, Tools.colorPaint(COLOR));
-        b_LevelStr = Bitmap.createBitmap(bitmap.getWidth(), l_Height, Bitmap.Config.ARGB_8888);
-        Tools.newCanvas(b_LevelStr).drawBitmap(bitmap, 0, (l_Height - bitmap.getHeight()) / 2, null);
+        b_LevelStr = Bitmap.createBitmap(bitmap.getWidth() + l_Width / 8, l_Height, Bitmap.Config.ARGB_8888);
+        Tools.newCanvas(b_LevelStr).drawBitmap(bitmap, l_Width / 8, (l_Height - bitmap.getHeight()) / 2, null);
     }
     void draw(Canvas canvas, int score, int level){ draw(canvas, score, level, 0, 0); }
     void draw(Canvas canvas, int score, int level, int xPos, int yPos){

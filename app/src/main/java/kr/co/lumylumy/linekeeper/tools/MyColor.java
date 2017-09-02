@@ -53,4 +53,5 @@ public class MyColor {
         }
         return 0;
     }
+    public static int hsvColor(int alpha, int h, int s, int v){ return aColor(alpha, hsvColor(h, s, v)); }
 }

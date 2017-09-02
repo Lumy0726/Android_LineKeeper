@@ -2,7 +2,11 @@ package kr.co.lumylumy.linekeeper.main;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.PorterDuff;
 import android.graphics.Rect;
+
+import kr.co.lumylumy.linekeeper.tools.MyColor;
+import kr.co.lumylumy.linekeeper.tools.Tools;
 
 /**
  * Created by LMJ on 2017-09-02.
@@ -32,5 +36,10 @@ abstract class DisplayObject{
         } else {
             canvas.drawBitmap(displayBitmap, null, outputRect, null);
         }
+    }
+    static Bitmap defaultTouchBitmap(Bitmap input){
+        Bitmap bitmap = Bitmap.createBitmap(input);
+        Tools.newCanvas(bitmap).drawColor(MyColor.aColor(0x7f, MyColor.hsvColor(0, 0, 50)), PorterDuff.Mode.SRC_ATOP);
+        return bitmap;
     }
 }

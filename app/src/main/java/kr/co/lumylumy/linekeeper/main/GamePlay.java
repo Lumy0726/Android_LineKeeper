@@ -29,6 +29,10 @@ class GamePlay implements GameBase{
     int gameBoardW, gameBoardH;
     //ScoreBoard
     ScoreBoard scoreBoard;
+    int scoreBoardWidth;
+    //PauseButton.
+    PauseButton pauseButton;
+    static final String PAUSEBUTTON_ID = "PauseButton";
     //TouchEvent.
     ArrayList<TouchInfo> touchInfo_S = new ArrayList<>();
     //state.
@@ -46,7 +50,11 @@ class GamePlay implements GameBase{
         gameBoard = new GameBoard(dv_Width, dv_Height);
         gameBoardW = gameBoard.outputWidth; gameBoardH = gameBoard.outputHeight;
         gameBoardMargin = dv_Height - gameBoardH;
-        scoreBoard = new ScoreBoard(dv_Width * 8 / 10, gameBoardMargin);
+        scoreBoardWidth = dv_Width * 8 / 10;
+        scoreBoard = new ScoreBoard(scoreBoardWidth, gameBoardMargin);
+        int pauseButtonMargin = (dv_Width - scoreBoardWidth) / 10;
+        pauseButton = new PauseButton(PAUSEBUTTON_ID, dv_Width - scoreBoardWidth - pauseButtonMargin * 2, dv_Width - scoreBoardWidth - pauseButtonMargin * 2);
+        pauseButton.setPos(scoreBoardWidth + pauseButtonMargin, (gameBoardMargin - pauseButton.height) / 2);
         state = STATE_PLAY;
     }
     @Override
@@ -74,6 +82,7 @@ class GamePlay implements GameBase{
         gameBoard.onTimer(id, sendNum);
         gameBoard.draw(gameMain.dv_Canvas);
         scoreBoard.draw(gameMain.dv_Canvas, gameBoard.gameScore, gameBoard.gameLevel);
+        pauseButton.draw(gameMain.dv_Canvas);
         gameMain.drawView.update();
         if (gameBoard.isDie){
             state = STATE_DIE;
@@ -99,7 +108,16 @@ class GamePlay implements GameBase{
                     t_Info = it.next();
                     if (t_Info.id == touchInfo.id){
                         //t_Info has the first position of touchInfo.
-                        if (touchInfo.action == TouchInfo.UP) it.remove();
+                        if (touchInfo.action == TouchInfo.UP){
+                            it.remove();
+                            if (pauseButton.inObject(t_Info.x, t_Info.y)){
+                                if (pauseButton.inObject(touchInfo.x, touchInfo.y)){
+                                    state = STATE_PAUSE;
+                                    gameMain.setGameState(GameMain.GSTATE_PAUSE);
+                                }
+                                return true;
+                            }
+                        }
                         if (inGameBoard(t_Info)){
                             return gameBoard.touchEvent(gameBoardTouch(touchInfo), rawEvent);
                         }
@@ -121,3 +139,60 @@ class GamePlay implements GameBase{
     }
     TouchInfo gameBoardTouch(TouchInfo touchInfo){ return new TouchInfo(touchInfo.x, touchInfo.y - gameBoardMargin, touchInfo.id, touchInfo.action); }
 }
+
+class PauseButton extends DisplayObject{
+    int width, height;
+    PauseButton(String name, int width, int height){
+        super(name);
+        this.width = width; this.height = height;
+        setPos(0, 0);
+        displayBitmap = Tools.roundRectBitmap(width, height, width / 10, MyColor.CYAN);
+        Canvas canvas = Tools.newCanvas(displayBitmap);
+        float width_2 = width / (float)2;
+        float height_2 = height / (float)2;
+        float pHeight = height / (float)2;
+        float pWidth = pHeight / (float)5;
+        float pHeight_2 = pHeight / (float)2;
+        float pWidth_2 = pWidth / (float)2;
+        Paint paint = Tools.colorPaint(MyColor.WHITE);
+        canvas.drawRect(width_2 - pWidth_2 * 3, height_2 - pHeight_2, width_2 - pWidth_2, height_2 + pHeight_2, paint);
+        canvas.drawRect(width_2 + pWidth_2, height_2 - pHeight_2, width_2 + pWidth_2 * 3, height_2 + pHeight_2, paint);
+        displayBitmapTouch = Bitmap.createBitmap(displayBitmap);
+    }
+    @Override
+    void setPos(int x, int y) {
+        xPos = x; yPos = y;
+        outputRect = Tools.rectWH(xPos, yPos, width, height);
+    }
+    @Override
+    boolean inObject(float x, float y) { return outputRect.contains((int)x, (int)y); }
+}
+
+/*
+abstract class DisplayObject{
+    String name;
+    Rect outputRect;
+    Bitmap displayBitmap, displayBitmapTouch;
+    int xPos, yPos;
+    int touchId;
+    boolean touchState = false;
+    DisplayObject(String name){ this.name = name; }
+    String name(){ return name; }
+    int getXPos(){ return xPos; }
+    int getYPos(){ return yPos; }
+    void setXPos(int x){ setPos(x, yPos); }
+    void setYPos(int y){ setPos(xPos, y); }
+    abstract void setPos(int x, int y);
+    void onTouch(int touchId){ touchState = true; this.touchId = touchId; }
+    void offTouch(){ touchState = false; }
+    boolean isTouch(){ return touchState; }
+    abstract boolean inObject(float x, float y);
+    void draw(Canvas canvas) {
+        if (touchState) {
+            canvas.drawBitmap(displayBitmapTouch, null, outputRect, null);
+        } else {
+            canvas.drawBitmap(displayBitmap, null, outputRect, null);
+        }
+    }
+}
+*/
