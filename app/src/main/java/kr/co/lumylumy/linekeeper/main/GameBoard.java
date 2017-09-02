@@ -264,15 +264,20 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
                 if (tile_S[y][x].isProcessing) tile_S[y][x].draw(c_Board);
             }
         }
+        for (int x = 0; x < BOARDW; x++){
+            for (int y = 0; y < BOARDH; y++){
+                if (!sweepLine.tileConnectSuccess[y][x]) tile_S[y][x].drawDanger(c_Board);
+            }
+        }
         //androidLog(String.format("GameBoard-draw-tileDraw: %5.2f", time_D.getTimeAv()));
         sweepLine.draw(c_Board, tileSize);
+        if (!cursorTilePos.isOut()){ c_Board.drawBitmap(b_Cursor, cursorTilePos.getX() * tileSize, cursorTilePos.getY() * tileSize, null); }
         //time_C.reset();
         c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLETOP1], rect_Cycle[RECT_CYCLEBOTTOM1], null);
         c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLEBOTTOM2], rect_Cycle[RECT_CYCLETOP2], null);
         c_Board.drawBitmap(b_Board, rect_Cycle[RECT_CYCLEBOTTOM1], rect_Cycle[RECT_CYCLETOP1], null);
         c_Board.drawRect(rect_Cycle[RECT_CYCLETOP1], Tools.colorPaint(MyColor.aColor(0x7f, MyColor.hsvColor(0, 80, 50))));
         //androidLog(String.format("GameBoard-draw-tileCycle: %5.2f", time_C.getTimeAv()));
-        if (!cursorTilePos.isOut()){ c_Board.drawBitmap(b_Cursor, cursorTilePos.getX() * tileSize, cursorTilePos.getY() * tileSize, null); }
         c_Board.drawBitmap(b_Control, 0, tileOutputHeight, null);
         //time_M.reset();
         canvas.drawBitmap(b_Board, r_Output, r_CanvasOutput, null);
@@ -336,6 +341,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             }
             if (needLineUpdate) {
                 sweepLine.needLineUpdate();
+                needLineUpdate = false;
             }
             if (isDie){
                 for (int x = 0; x < BOARDW; x++) {
@@ -453,6 +459,8 @@ class SweepLine {
     double speedDefault, speedHigh, speedIncreaseValue;
     Coord tilePosition, restrictTilePosition;
     int height, cycleHeight;
+    //connectSuccessInfo.
+    boolean[][] tileConnectSuccess = new boolean[GameBoard.BOARDH][GameBoard.BOARDW];
     //line connecting Info.
     class ConnectInfo{
         Coord pos;
@@ -553,13 +561,15 @@ class SweepLine {
         //position of Y.
         int tileX, tileY = tilePosition.getY(), restrictTileY = restrictTilePosition.getY();
         //line connecting Info.
-        LinkedList<ConnectInfo> connectInfo_S = new LinkedList<>();
+        LinkedList<ConnectInfo> connectInfos = new LinkedList<>();
+        LinkedList<ConnectInfo> connectInfosU = new LinkedList<>();
         ConnectInfo connectInfo = null;
 
         //
         p_Score = 0;
         p_TileNumber = 0;
         //reset connect state.
+        tileConnectInfoReset();
         for (tileX = 0; tileX < GameBoard.BOARDW; tileX++){
             for (int y = 0; y < GameBoard.BOARDH; y++){
                 if (y != restrictTileY){
@@ -574,11 +584,12 @@ class SweepLine {
                     newFlowDirection = gameBoard.tile_S[tileY][tileX].lineFlow(new Direction(Direction.U));//lineflow.
                     p_Score += gameBoard.tile_S[tileY][tileX].connectScore();
                     tempPos = new Coord(gameBoard.tileExternalPosEx).setPos(tileX, tileY);
-                    for (Direction di: newFlowDirection){//push to connectInfo_S stack.
-                        connectInfo_S.add(new ConnectInfo(di, tempPos));
+                    for (Direction di: newFlowDirection){//push to connectInfos stack.
+                        if (di.get() == Direction.U) connectInfosU.add(new ConnectInfo(di, tempPos));
+                        else connectInfos.add(new ConnectInfo(di, tempPos));
                     }
-                    while(!connectInfo_S.isEmpty()){
-                        connectInfo = connectInfo_S.getLast();
+                    while(!connectInfos.isEmpty()){
+                        connectInfo = connectInfos.getLast();
                         newFlowDirection = null;
                         tempPos = new Coord(connectInfo.pos).move(connectInfo.direction);
                         switch(connectInfo.direction.get()){
@@ -597,25 +608,49 @@ class SweepLine {
                                             p_TileNumber++;
                                         }
                                     }
-                                    else if (tempPos.getY() == tileY) { isConnectSuccess = false; }//lineflow fail.
+                                    else {//lineflow fail.
+                                        if (tempPos.getY() == tileY) isConnectSuccess = false;
+                                        tileConnectSuccess[connectInfo.pos.getY()][connectInfo.pos.getX()] = false;
+                                    }
                                 }
-                                else if (tempPos.getY() == tileY) { isConnectSuccess = false; }//lineflow fail(out of board).
-                                break;
-                            case Direction.U:
-                                if (tempPos.getY() == restrictTileY){
-                                    if (!gameBoard.tile_S[tempPos.getY()][tempPos.getX()].lineD) isConnectSuccess = false;
+                                else {//lineflow fail(out of board).
+                                    if (tempPos.getY() == tileY) isConnectSuccess = false;
+                                    tileConnectSuccess[connectInfo.pos.getY()][connectInfo.pos.getX()] = false;
                                 }
                                 break;
                         }
-                        connectInfo_S.removeLast();
+                        connectInfos.removeLast();
                         if (newFlowDirection != null){
                             for (Direction di : newFlowDirection){
-                                connectInfo_S.add(new ConnectInfo(di, tempPos));
+                                if (di.get() == Direction.U) connectInfosU.add(new ConnectInfo(di, tempPos));
+                                else connectInfos.add(new ConnectInfo(di, tempPos));
                             }
                         }
                     }
                 }
-                else isConnectSuccess = false;//lineflow fail.
+                else{
+                    isConnectSuccess = false;//lineflow fail.
+                    tileConnectSuccess[restrictTileY][tileX] = false;
+                }
+            }
+        }
+        //ConnectU Check.
+        while(!connectInfosU.isEmpty()){
+            connectInfo = connectInfosU.getLast();
+            tempPos = new Coord(connectInfo.pos).move(connectInfo.direction);
+            if (!gameBoard.tile_S[tempPos.getY()][tempPos.getX()].lineD){//check lineflow.
+                if (tempPos.getY() == restrictTileY) isConnectSuccess = false;
+                tileConnectSuccess[connectInfo.pos.getY()][connectInfo.pos.getX()] = false;
+            }
+            connectInfosU.removeLast();
+        }
+        //mustConnect check.
+        for (tileX = 0; tileX < GameBoard.BOARDW; tileX++) {
+            if (gameBoard.tile_S[tileY][tileX].mustConnect) {
+                if (!gameBoard.tile_S[tileY][tileX].isConnectAll()) {
+                    tileConnectSuccess[tileY][tileX] = false;
+                    isConnectSuccess = false;
+                }
             }
         }
         //if Connect is success, then more check.
@@ -629,19 +664,13 @@ class SweepLine {
                 }
             }
             if (!lineFlowDown) isConnectSuccess = false;
-            else {
-                //mustConnect check.
-                for (tileX = 0; tileX < GameBoard.BOARDW; tileX++) {
-                    if (gameBoard.tile_S[tileY][tileX].mustConnect) {
-                        if (!gameBoard.tile_S[tileY][tileX].isConnectAll()) {
-                            isConnectSuccess = false;
-                            break;
-                        }
-                    }
-                }
-            }
         }
         return isConnectSuccess;
+    }
+    void tileConnectInfoReset(){
+        for (boolean[] loop1 : tileConnectSuccess){
+            for (int loop2 = 0; loop2 < loop1.length; loop2++) loop1[loop2] = true;
+        }
     }
     void needLineUpdate(){ processLineRow(); }
     void newTile(){

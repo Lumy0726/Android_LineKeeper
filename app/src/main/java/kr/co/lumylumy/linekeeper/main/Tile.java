@@ -70,6 +70,8 @@ abstract class Tile implements TimerAble {
     static int tilePos1 = 0, tilePos2 = 0;
     //if moveAble is false, draw this.
     static Bitmap b_UnAbleMove;
+    //if tile will cause game over, then draw this.
+    static Bitmap b_Danger;
     //connect
     boolean lineR = false, lineU = false, lineL = false, lineD = false;
     boolean mustConnect = false;
@@ -212,6 +214,9 @@ abstract class Tile implements TimerAble {
         canvas.drawBitmap(outBitmap, pos.getX() - outBitmap.getWidth() / 2, pos.getY() - outBitmap.getHeight() / 2, null);
         if (!moveAble) canvas.drawBitmap(b_UnAbleMove, pos.getX() - tileSize / 2, pos.getY() - tileSize / 2, null);
     }
+    void drawDanger(Canvas canvas){
+        canvas.drawBitmap(b_Danger, pos.getX() - tileSize / 2, pos.getY() - tileSize / 2, null);
+    }
     abstract void drawLine(Canvas canvas);
     void directionToBitmap(){
         int di = tileDirection.get();
@@ -274,6 +279,14 @@ abstract class Tile implements TimerAble {
                             Shader.TileMode.MIRROR)
             );
             Tools.newCanvas(b_UnAbleMove).drawRect(0, 0, tileSize, tileSize, paint);
+        }
+        //b_Danger.
+        {
+            int pos1 = tileSize * 3 / 20, pos2 = tileSize * 5 / 20;
+            b_Danger = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+            Canvas canvas = Tools.newCanvas(b_Danger);
+            canvas.drawRect(pos1, pos1, tileSize - pos1, tileSize - pos1, Tools.colorPaint(MyColor.hsvColor(0x90, 0, 100, 100)));
+            canvas.drawRect(pos2, pos2, tileSize - pos2, tileSize - pos2, Tools.colorPaint(0, true));
         }
         //Tile's Bitmap.
         Tile_STRAIGHT.makeTileBitmap();
