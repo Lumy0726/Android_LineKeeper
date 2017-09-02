@@ -89,7 +89,7 @@ abstract class Tile implements TimerAble {
     Coord pos, backupPos;
     //some color.
     static final int COLOR_LINE = MyColor.BLUE;
-    static final int COLOR1 = MyColor.hsvColor(24, 100, 80);
+    static final int COLOR1 = MyColor.hsvColor(40, 100, 80);
     static final int COLOR2 = MyColor.hsvColor(24, 100, 50);
 
     //score

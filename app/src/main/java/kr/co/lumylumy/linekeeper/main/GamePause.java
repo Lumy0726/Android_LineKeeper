@@ -2,6 +2,7 @@ package kr.co.lumylumy.linekeeper.main;
 
 import android.view.MotionEvent;
 
+import kr.co.lumylumy.linekeeper.tools.Tools;
 import kr.co.lumylumy.linekeeper.tools.TouchInfo;
 
 /**
@@ -13,6 +14,8 @@ class GamePause implements GameBase{
     GameMain gameMain;
     //gamePlay.
     GamePlay gamePlay;
+    //test
+    int touchNum;
 
     //constructer
     public GamePause(GameMain gameMain, GamePlay gamePlay){
@@ -22,12 +25,12 @@ class GamePause implements GameBase{
 
     @Override
     public void onStart() {
-        //test code - save score and return to menu.
+        //test code - save score and return to menu(when 4 touch input).
+        touchNum = 4;
         int bestScore = gameMain.loadScore();
         if (gamePlay.gameBoard.gameScore > bestScore){
             gameMain.saveScore(gamePlay.gameBoard.gameScore);
         }
-        gameMain.setGameState(GameMain.GSTATE_MENU);
     }
 
     //Timer/Touch input.
@@ -37,7 +40,13 @@ class GamePause implements GameBase{
     }
     @Override
     public boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent) {
-        return false;
+        //test code - return to menu.
+        if (touchInfo.action == TouchInfo.DOWN){
+            touchNum--;
+            if (touchNum == 0) gameMain.setGameState(GameMain.GSTATE_MENU);
+            else Tools.simpleToast("TouchDown" + touchNum);
+        }
+        return true;
     }
     @Override
     public boolean onBackKeyDown() { return false; }

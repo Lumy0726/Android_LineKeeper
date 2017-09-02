@@ -181,32 +181,6 @@ public class GameMenu implements GameBase {
     }
 }
 
-abstract class DisplayObject{
-    String name;
-    Rect outputRect;
-    Bitmap displayBitmap, displayBitmapTouch;
-    int xPos, yPos;
-    int touchId;
-    boolean touchState = false;
-    DisplayObject(String name){ this.name = name; }
-    String name(){ return name; }
-    int getXPos(){ return xPos; }
-    int getYPos(){ return yPos; }
-    void setXPos(int x){ setPos(x, yPos); }
-    void setYPos(int y){ setPos(xPos, y); }
-    abstract void setPos(int x, int y);
-    void onTouch(int touchId){ touchState = true; this.touchId = touchId; }
-    void offTouch(){ touchState = false; }
-    boolean isTouch(){ return touchState; }
-    abstract boolean inObject(float x, float y);
-    void draw(Canvas canvas) {
-        if (touchState) {
-            canvas.drawBitmap(displayBitmapTouch, null, outputRect, null);
-        } else {
-            canvas.drawBitmap(displayBitmap, null, outputRect, null);
-        }
-    }
-}
 class Menu extends DisplayObject{
     int width, height, edgeWidth;
     int touchId;
@@ -279,14 +253,8 @@ class ScoreBar extends DisplayObject{
         setPos(xPos, yPos);
         scoreBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = Tools.newCanvas(scoreBitmap);
-        Paint paint = Tools.colorPaint(MyColor.hsvColor(120, 60, 100));
-        int radius = height / 6;
-        canvas.drawCircle(radius, radius, radius, paint);
-        canvas.drawCircle(width - radius, radius, radius, paint);
-        canvas.drawCircle(radius, height - radius, radius, paint);
-        canvas.drawCircle(width - radius, height - radius, radius, paint);
-        canvas.drawRect(radius, 0, width - radius, height, paint);
-        canvas.drawRect(0, radius, width, height - radius, paint);
+        float radius = height / (float)6;
+        canvas.drawBitmap(Tools.roundRectBitmap(width, height, radius, MyColor.aColor(0x90, MyColor.hsvColor(120, 60, 100))), 0, 0, null);
         height_2 = height / 2;
         Bitmap tBitmap = Tools.textBitmap("BEST SCORE:", height_2, Tools.colorPaint(MyColor.BLACK));
         canvas.drawBitmap(tBitmap, (width - tBitmap.getWidth()) / 2, (height_2 - tBitmap.getHeight()) / 2, null);

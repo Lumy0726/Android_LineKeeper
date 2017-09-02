@@ -288,4 +288,69 @@ public class Tools {
         canvas.setBitmap(bitmap);
         return canvas;
     }
+    public static Bitmap roundRectBitmap(int width, int height, float radius, int color){
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(bitmap);
+        Paint paint = Tools.colorPaint(color, true);
+        canvas.drawCircle(radius, radius, radius, paint);
+        canvas.drawCircle(width - radius, radius, radius, paint);
+        canvas.drawCircle(radius, height - radius, radius, paint);
+        canvas.drawCircle(width - radius, height - radius, radius, paint);
+        canvas.drawRect(radius, 0, width - radius, height, paint);
+        canvas.drawRect(0, radius, width, height - radius, paint);
+        return bitmap;
+    }
+    public static Bitmap arrowBitmap(int width, int height, int color){
+        int arrowWidth = width / 10, width_2 = width / 2;
+        Bitmap rValue = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Path path = new Path();
+        path.moveTo(width_2, arrowWidth);
+        path.rLineTo(arrowWidth * 3 / 2, arrowWidth * 2);
+        path.lineTo(width_2 + arrowWidth / 2, arrowWidth * 3);
+        path.lineTo(width_2 + arrowWidth / 2, height - arrowWidth);
+        path.rLineTo(-arrowWidth, 0);
+        path.lineTo(width_2 - arrowWidth / 2, arrowWidth * 3);
+        path.rLineTo(-arrowWidth, 0);
+        path.close();
+        Paint paint = Tools.colorPaint(color);
+        paint.setStyle(Paint.Style.FILL);
+        Tools.newCanvas(rValue).drawPath(path, paint);
+        return rValue;
+    }
+    public static Bitmap frameBitmap(int width, int height, int color){ return frameBitmap(width, height, width / 15, height / 15, color); }
+    public static Bitmap frameBitmap(int width, int height, int wide, int color){ return frameBitmap(width, height, wide, wide, color); }
+    public static Bitmap frameBitmap(int width, int height, int xWide, int yWide, int color){
+        Bitmap rValue;
+        Canvas canvas = new Canvas();
+        rValue = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(rValue);
+        Tools.resetBitmap(canvas, color);
+        canvas.drawRect(xWide, yWide, width - xWide, height - yWide, Tools.colorPaint(0, true));
+        return rValue;
+    }
+    public static Bitmap rotateArrowBitmap(int size, int color){
+        float middle = size / (float)2, quarter = size / (float)4, width_2 = size / 20;
+        Bitmap rValue;
+        Paint paint;
+        Path path = new Path();
+        Canvas canvas = new Canvas();
+        rValue = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        canvas.setBitmap(rValue);
+        canvas.drawCircle(middle, middle, quarter + width_2, Tools.colorPaint(color));
+        canvas.drawCircle(middle, middle, quarter - width_2, paint = Tools.colorPaint(0, true));
+        paint.setStyle(Paint.Style.FILL);
+        path.moveTo(0, quarter);
+        path.lineTo(middle, 0);
+        path.lineTo(middle, middle);
+        path.close();
+        canvas.drawPath(path, paint);
+        paint.setColor(color);
+        path.reset();
+        path.moveTo(middle, quarter - width_2 * 3);
+        path.lineTo(middle - width_2 * 3, quarter);
+        path.lineTo(middle, quarter + width_2 * 3);
+        path.close();
+        canvas.drawPath(path, paint);
+        return rValue;
+    }
 }

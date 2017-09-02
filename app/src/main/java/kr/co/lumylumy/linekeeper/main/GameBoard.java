@@ -115,15 +115,15 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         b_Control = Bitmap.createBitmap(outputWidth, controlPanelHeight, Bitmap.Config.ARGB_8888);
         Bitmap bitmap_Arrow = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
         Bitmap bitmap_Rotate = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
-        Bitmap frameBitmap = frameBitmap(tileSize, tileSize, MyColor.hsvColor(30, 100, 100));
+        Bitmap frameBitmap = Tools.frameBitmap(tileSize, tileSize, MyColor.hsvColor(30, 100, 100));
         canvas.setBitmap(bitmap_Arrow);
         Tools.resetBitmap(canvas, MyColor.hsvColor(0, 0, 80));
         canvas.drawBitmap(frameBitmap, 0, 0, null);
-        canvas.drawBitmap(arrowBitmap(tileSize, tileSize, MyColor.RED), 0, 0, null);
+        canvas.drawBitmap(Tools.arrowBitmap(tileSize, tileSize, MyColor.RED), 0, 0, null);
         canvas.setBitmap(bitmap_Rotate);
         Tools.resetBitmap(canvas, MyColor.hsvColor(0, 0, 80));
         canvas.drawBitmap(frameBitmap, 0, 0, null);
-        canvas.drawBitmap(rotateArrowBitmap(tileSize, MyColor.RED), 0, 0, null);
+        canvas.drawBitmap(Tools.rotateArrowBitmap(tileSize, MyColor.RED), 0, 0, null);
         canvas.setBitmap(b_Control);
         Tools.resetBitmap(canvas, MyColor.WHITE);
         canvas.drawBitmap(bitmap_Arrow, null, rect_Control[CONTROL_U], null);
@@ -145,7 +145,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         setTileCyclePanel();
         setControlPanel();
         //Cursor Bitmap.
-        b_Cursor = frameBitmap(tileSize, tileSize, MyColor.RED);
+        b_Cursor = Tools.frameBitmap(tileSize, tileSize, tileSize / 10, MyColor.RED);
         //BitmapBoard.
         b_Board = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888);
         c_Board = Tools.newCanvas(b_Board);
@@ -236,61 +236,6 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             gameLevel = level;
             sweepLine.setSpeed(level);
         }
-    }
-
-    //some Bitmap drawing method.
-    Bitmap arrowBitmap(int width, int height, int color){
-        int arrowWidth = width / 10, width_2 = width / 2;
-        Bitmap rValue = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        Path path = new Path();
-        path.moveTo(width_2, arrowWidth);
-        path.rLineTo(arrowWidth * 3 / 2, arrowWidth * 2);
-        path.lineTo(width_2 + arrowWidth / 2, arrowWidth * 3);
-        path.lineTo(width_2 + arrowWidth / 2, height - arrowWidth);
-        path.rLineTo(-arrowWidth, 0);
-        path.lineTo(width_2 - arrowWidth / 2, arrowWidth * 3);
-        path.rLineTo(-arrowWidth, 0);
-        path.close();
-        Paint paint = Tools.colorPaint(color);
-        paint.setStyle(Paint.Style.FILL);
-        Tools.newCanvas(rValue).drawPath(path, paint);
-        return rValue;
-    }
-    Bitmap frameBitmap(int width, int height, int color){
-        Bitmap rValue;
-        Canvas canvas = new Canvas();
-        rValue = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        canvas.setBitmap(rValue);
-        Tools.resetBitmap(canvas, color);
-        int marginX = width / 15;
-        int marginY = height / 15;
-        canvas.drawRect(marginX, marginY, width - marginX, height - marginY, Tools.colorPaint(0, true));
-        return rValue;
-    }
-    Bitmap rotateArrowBitmap(int size, int color){
-        float middle = size / (float)2, quarter = size / (float)4, width_2 = size / 20;
-        Bitmap rValue;
-        Paint paint;
-        Path path = new Path();
-        Canvas canvas = new Canvas();
-        rValue = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        canvas.setBitmap(rValue);
-        canvas.drawCircle(middle, middle, quarter + width_2, Tools.colorPaint(color));
-        canvas.drawCircle(middle, middle, quarter - width_2, paint = Tools.colorPaint(0, true));
-        paint.setStyle(Paint.Style.FILL);
-        path.moveTo(0, quarter);
-        path.lineTo(middle, 0);
-        path.lineTo(middle, middle);
-        path.close();
-        canvas.drawPath(path, paint);
-        paint.setColor(color);
-        path.reset();
-        path.moveTo(middle, quarter - width_2 * 3);
-        path.lineTo(middle - width_2 * 3, quarter);
-        path.lineTo(middle, quarter + width_2 * 3);
-        path.close();
-        canvas.drawPath(path, paint);
-        return rValue;
     }
 
     //canvas draw.
