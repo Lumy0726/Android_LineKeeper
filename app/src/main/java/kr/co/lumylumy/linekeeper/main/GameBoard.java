@@ -291,6 +291,30 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         tile_S[getTileYToCursor(input1)][input1.getX()] = getTileToCursor(input2);
         tile_S[getTileYToCursor(input2)][input2.getX()] = temp;
     }
+    //
+    void sl_ProcessResult(){
+        boolean isLevelUp = false;
+        int lineNum = sweepLine.getLastProcessLineNumber();
+        int tileNum = sweepLine.getLastProcessTileNumber();
+        clearLineNum += lineNum;
+        levelUpLineNum += lineNum;
+        clearTileNum += tileNum;
+        tileNum -= lineNum;
+        if (tileNum > 0) levelUpTileNum += tileNum;
+        if (levelUpLineNum >= BOARDH * 2) {
+            gameLevel += levelUpLineNum / (BOARDH * 2);
+            levelUpLineNum %= BOARDH * 2;
+            isLevelUp = true;
+        }
+        if (levelUpTileNum >= BOARDH) {
+            gameLevel += levelUpTileNum / BOARDH;
+            levelUpTileNum %= BOARDH;
+            isLevelUp = true;
+        }
+        if (isLevelUp) {
+            sweepLine.setSpeed(gameLevel);
+        }
+    }
     //timer, touch.
     @Override
     public void onTimer(int id, int sendNum) {
@@ -315,28 +339,8 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             }
             else {//sweepLine processing complete.
                 if (sweepLine.getLastProcessLineNumber() > 0) {
-                    boolean isLevelUp = false;
                     gameScore += sweepLine.getLastProcessScore();
-                    int lineNum = sweepLine.getLastProcessLineNumber();
-                    int tileNum = sweepLine.getLastProcessTileNumber();
-                    clearLineNum += lineNum;
-                    levelUpLineNum += lineNum;
-                    clearTileNum += tileNum;
-                    tileNum -= lineNum;
-                    if (tileNum > 0) levelUpTileNum += tileNum;
-                    if (levelUpLineNum >= BOARDH * 2) {
-                        gameLevel += levelUpLineNum / (BOARDH * 2);
-                        levelUpLineNum %= BOARDH * 2;
-                        isLevelUp = true;
-                    }
-                    if (levelUpTileNum >= BOARDH) {
-                        gameLevel += levelUpTileNum / BOARDH;
-                        levelUpTileNum %= BOARDH;
-                        isLevelUp = true;
-                    }
-                    if (isLevelUp) {
-                        sweepLine.setSpeed(gameLevel);
-                    }
+                    sl_ProcessResult();
                 }
             }
             if (needLineUpdate) {
@@ -367,12 +371,27 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         boolean flag;
         Coord touchTilePos = new Coord(cursorTilePos);
         Tile tile, tile2;
+        //sweepLine touch.
+        float sl_TouchY = (touchInfo.y > tileSize) ? (touchInfo.y - tileSize) : (touchInfo.y + (BOARDH - 1) * tileSize);
+        if (0f < sl_TouchY && sl_TouchY < (float)(BOARDH * tileSize)){
+            if (sweepLine.touchInput(new TouchInfo(touchInfo.x, sl_TouchY, touchInfo.id, touchInfo.action))){
+                //game over.
+            }
+            else {
+                if (sweepLine.getLastProcessLineNumber() > 0){
+                    int addScore = sweepLine.getLastProcessScore() * ((sweepLine.getLastProcessLineNumber() + 2) / 2) * ((gameLevel + 5) / 5);
+                    gameScore += addScore;
+                    sl_ProcessResult();
+                }
+            }
+        }
+        //touch.
         switch(touchInfo.action){
             case TouchInfo.DOWN:
                 touchInput.add(touchInfo);
                 touchTilePos.setPos((int) touchInfo.x / tileSize, (int) touchInfo.y / tileSize);
-                if (touchTilePos.isOut()){//touch control button
-                    if (!cursorTilePos.isOut()){
+                if (touchTilePos.isOut()){//not select tile - touch control button
+                    if (!cursorTilePos.isOut()){//able to process control button.
                         Direction di = null, diM;
                         Coord obPos;
                         tile = getTileToCursor(cursorTilePos);
@@ -467,6 +486,12 @@ class SweepLine {
         Direction direction;
         ConnectInfo(Direction di, Coord pos){ direction = di; this.pos = pos; }
     }
+    //touch property.
+    boolean touchFlag = false;
+    boolean touchMoveFlag;
+    int touchId;
+    int touchMargin;
+
 
     //constructor.
     SweepLine(GameBoard input){
@@ -487,6 +512,8 @@ class SweepLine {
         speedIncreaseValue = 1.15;
         //position.
         position = (double)0;
+        //touchMargin.
+        touchMargin = tileSize / 4;
     }
     //drawing.
     void draw(Canvas canvas, int margin){
@@ -503,6 +530,47 @@ class SweepLine {
         if (level > 0){
             speed = speedHigh - (speedHigh - speedDefault) * Math.pow(speedIncreaseValue, (double)(1 - level));
         }
+    }
+    //touch process.
+    boolean touchInput(TouchInfo touchInfo){
+        switch(touchInfo.action){
+            case TouchInfo.DOWN:
+                if (!touchFlag){
+                    int intPosition = (int)this.position;
+                    int touchY = (int)touchInfo.y;
+                    if (intPosition - touchMargin < touchY && touchY < intPosition + touchMargin){//touch the sweepLine.
+                        touchId = touchInfo.id;
+                        touchFlag = true;
+                        touchMoveFlag = false;
+                    }
+                }
+                break;
+            case TouchInfo.MOVE:
+                if (touchFlag && touchId == touchInfo.id){ return moveLineTouch((double)touchInfo.y); }
+                break;
+            case TouchInfo.UP:
+                if (touchFlag && touchId == touchInfo.id) touchFlag = false;
+                break;
+            case TouchInfo.CANCEL:
+                touchFlag = false;
+                break;
+        }
+        return false;//Not game over.
+    }
+    boolean moveLineTouch(double y){
+        int tileProcessHeight;//how many game tile's row have to processing.
+        double moveDelta = (y + cycleHeight - position) % cycleHeight;
+        if ((int)moveDelta < cycleHeight / 2){//prevent reverse teleport moving.
+            if (touchMoveFlag || (int)moveDelta > touchMargin){
+                touchMoveFlag = true;
+                position += moveDelta;
+                score = lineNumber = tileNumber = 0;
+                tileProcessHeight = (int)position / tileSize - tilePosition.getY();
+                if (position >= cycleHeight) position = (double)((int)position % cycleHeight);
+                if (processLine(tileProcessHeight)) return true;//Die, game over.
+            }
+        }
+        return false;//Not game over.
     }
     //entry of process.
     boolean processMain(int sendNum){ return moveLine(sendNum); }

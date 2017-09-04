@@ -29,7 +29,6 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 ---Job List---
 DEV.
     make many type of tile (extends Tile Class).
-    sweepLine을 사용자가 바로 내리는 기능 추가하기.
     타일 커서를 방향버튼으로도 움직일 수 있도록 하기.
     메인메뉴에 설정 관련 추가하기.
 
