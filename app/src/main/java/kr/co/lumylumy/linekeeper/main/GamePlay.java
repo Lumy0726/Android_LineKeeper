@@ -92,6 +92,8 @@ class GamePlay implements GameBase{
         gameBoard.draw(gameMain.dv_Canvas);
         scoreBoard.draw(gameMain.dv_Canvas, gameBoard.gameScore, gameBoard.gameLevel);
         pauseButton.draw(gameMain.dv_Canvas);
+        //test
+        gameMain.drawView.setDebugOutput("Tile Multiplier: " + gameBoard.sweepLine.touchMoveTileNum);
         gameMain.drawView.update();
         if (gameBoard.isDie){
             state = STATE_DIE;

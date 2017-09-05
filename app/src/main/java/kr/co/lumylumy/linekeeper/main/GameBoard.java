@@ -237,6 +237,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             sweepLine.setSpeed(level);
         }
     }
+    int levelMultiplier(){ return gameLevel / 10 + 1; }
 
     //
     int getTileOutputHeight(){ return tileOutputHeight; }
@@ -339,7 +340,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             }
             else {//sweepLine processing complete.
                 if (sweepLine.getLastProcessLineNumber() > 0) {
-                    gameScore += sweepLine.getLastProcessScore();
+                    gameScore += sweepLine.getLastProcessScore() * levelMultiplier();
                     sl_ProcessResult();
                 }
             }
@@ -373,16 +374,20 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         Tile tile, tile2;
         //sweepLine touch.
         float sl_TouchY = (touchInfo.y > tileSize) ? (touchInfo.y - tileSize) : (touchInfo.y + (BOARDH - 1) * tileSize);
-        if (0f < sl_TouchY && sl_TouchY < (float)(BOARDH * tileSize)){
-            if (sweepLine.touchInput(new TouchInfo(touchInfo.x, sl_TouchY, touchInfo.id, touchInfo.action))){
-                //game over.
+        sl_TouchY = touchInfo.y;
+        if (sl_TouchY > 0){
+            if (touchInfo.y < tileSize){
+                sl_TouchY += (BOARDH - 1) * tileSize;
             }
-            else {
-                if (sweepLine.getLastProcessLineNumber() > 0){
-                    int addScore = sweepLine.getLastProcessScore() * ((sweepLine.getLastProcessLineNumber() + 2) / 2) * ((gameLevel + 5) / 5);
-                    gameScore += addScore;
-                    sl_ProcessResult();
-                }
+            else { sl_TouchY -= tileSize; }
+        }
+        if (sweepLine.touchInput(new TouchInfo(touchInfo.x, sl_TouchY, touchInfo.id, touchInfo.action))) {
+            //game over.
+        }
+        else {
+            if (sweepLine.getLastProcessLineNumber() > 0) {
+                gameScore += sweepLine.getLastProcessScore() * levelMultiplier();
+                sl_ProcessResult();
             }
         }
         //touch.
@@ -478,6 +483,10 @@ class SweepLine {
     double speedDefault, speedHigh, speedIncreaseValue;
     Coord tilePosition, restrictTilePosition;
     int height, cycleHeight;
+    //sweepLine moving identity value.
+    double autoMoveValue, userMoveValue;
+    static final int MOVE_AUTO = 0, MOVE_USER = 1;
+    int lastMoveIdentity;
     //connectSuccessInfo.
     boolean[][] tileConnectSuccess = new boolean[GameBoard.BOARDH][GameBoard.BOARDW];
     //line connecting Info.
@@ -487,10 +496,12 @@ class SweepLine {
         ConnectInfo(Direction di, Coord pos){ direction = di; this.pos = pos; }
     }
     //touch property.
-    boolean touchFlag = false;
-    boolean touchMoveFlag;
+    boolean touchFlag = false;//whether user touch/moving sweepLine.
+    boolean touchMoveFlag;//whether user moving sweepLine once.
     int touchId;
-    int touchMargin;
+    int touchMargin;//sweepLine's touch radius.
+    int touchMoveTileNum = 0;
+
 
 
     //constructor.
@@ -511,9 +522,11 @@ class SweepLine {
         speedHigh = (double)tileSize / (3500 / GameMain.TIMERPERIOD_MAIN);
         speedIncreaseValue = 1.15;
         //position.
-        position = (double)0;
+        position = 0d;
         //touchMargin.
-        touchMargin = tileSize / 4;
+        touchMargin = tileSize / 3;
+        //
+        autoMoveValue = userMoveValue = 0d;
     }
     //drawing.
     void draw(Canvas canvas, int margin){
@@ -531,8 +544,9 @@ class SweepLine {
             speed = speedHigh - (speedHigh - speedDefault) * Math.pow(speedIncreaseValue, (double)(1 - level));
         }
     }
-    //touch process.
+    //touch moving process.,
     boolean touchInput(TouchInfo touchInfo){
+        lineNumber = 0; //if touchInput does not move sweepLine, getLastProcessLineNumber() should return 0.
         switch(touchInfo.action){
             case TouchInfo.DOWN:
                 if (!touchFlag){
@@ -558,16 +572,15 @@ class SweepLine {
         return false;//Not game over.
     }
     boolean moveLineTouch(double y){
-        int tileProcessHeight;//how many game tile's row have to processing.
-        double moveDelta = (y + cycleHeight - position) % cycleHeight;
-        if ((int)moveDelta < cycleHeight / 2){//prevent reverse teleport moving.
-            if (touchMoveFlag || (int)moveDelta > touchMargin){
-                touchMoveFlag = true;
-                position += moveDelta;
-                score = lineNumber = tileNumber = 0;
-                tileProcessHeight = (int)position / tileSize - tilePosition.getY();
-                if (position >= cycleHeight) position = (double)((int)position % cycleHeight);
-                if (processLine(tileProcessHeight)) return true;//Die, game over.
+        if (0 < y && y < cycleHeight){
+            double moveDelta = (y + cycleHeight - position) % cycleHeight;
+            if ((int)moveDelta < cycleHeight / 2){//prevent reverse teleport moving.
+                if (touchMoveFlag || (int)moveDelta > touchMargin){//user move sweepLine once || user move sweepLine obviously.
+                    touchMoveFlag = true;
+                    userMoveValue += moveDelta;
+                    lastMoveIdentity = MOVE_USER;
+                    return moveLineDelta(moveDelta);
+                }
             }
         }
         return false;//Not game over.
@@ -576,8 +589,14 @@ class SweepLine {
     boolean processMain(int sendNum){ return moveLine(sendNum); }
     //
     boolean moveLine(int processNum){
+        double moveDelta = speed * processNum;
+        autoMoveValue += moveDelta;
+        lastMoveIdentity = MOVE_AUTO;
+        return moveLineDelta(speed * processNum);
+    }
+    boolean moveLineDelta(double delta){
         int tileProcessHeight;//how many game tile's row have to processing.
-        position += speed * processNum;
+        position += delta;
         score = lineNumber = tileNumber = 0;
         tileProcessHeight = (int)position / tileSize - tilePosition.getY();
         if (position >= cycleHeight) position = (double)((int)position % cycleHeight);
@@ -600,7 +619,31 @@ class SweepLine {
                     return true;
                 }
                 else {
-                    score += p_Score;
+                    //line processing complete.
+                    int moveIdentity = MOVE_AUTO;
+                    switch (lastMoveIdentity){
+                        case MOVE_AUTO:
+                            if (userMoveValue > tileSize / (double)2){
+                                moveIdentity = MOVE_USER;
+                                userMoveValue = 0d;
+                            }
+                            break;
+                        case MOVE_USER:
+                            if (autoMoveValue < tileSize / (double)2){
+                                moveIdentity = MOVE_USER;
+                                autoMoveValue = 0d;
+                            }
+                            break;
+                    }
+                    switch(moveIdentity){
+                        case MOVE_AUTO:
+                            score += p_Score;
+                            touchMoveTileNum = 0;
+                            break;
+                        case MOVE_USER:
+                            score += p_Score * (++touchMoveTileNum + 1);
+                            break;
+                    }
                     tileNumber += p_TileNumber;
                     lineNumber++;
                 }
@@ -613,6 +656,16 @@ class SweepLine {
                 //move to next line.
                 restrictTilePosition = tilePosition;
                 tilePosition = new Coord(tilePosition).move(new Direction(Direction.D));
+            }
+            switch (lastMoveIdentity){
+                case MOVE_AUTO:
+                    userMoveValue = 0d;
+                    autoMoveValue = position % (double)tileSize;
+                    break;
+                case MOVE_USER:
+                    autoMoveValue = 0d;
+                    userMoveValue = position % (double)tileSize;
+                    break;
             }
             processLineRow();
         }

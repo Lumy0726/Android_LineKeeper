@@ -45,6 +45,8 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
 
     int defaultBackground = MyColor.BLACK;
 
+    String debugOutput = null;
+
     TouchEvent touchEventClass;
     public interface TouchEvent{
         boolean touchEvent(TouchInfo touchInfo, MotionEvent rawEvent);
@@ -121,6 +123,7 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
         }
         return false;
     }
+    public void setDebugOutput(String str){ debugOutput = str; }
     public Canvas getCanvas(){ return canvas; }
     public float getRatio(){ return ratio; }
     public int getMarginX(){ return marginX; }
@@ -213,6 +216,9 @@ public class SurfaceDrawView extends SurfaceView implements SurfaceHolder.Callba
                         //androidLog(String.format("DrawView: %5.2f", time_Test.getTimeAv()));
                         if (fpsOutput){
                             viewCanvas.drawText(String.format("FPS:%5.2f", framePerSec), 0, viewCanvas.getHeight(), fpsPaint);
+                        }
+                        if (debugOutput != null){
+                            viewCanvas.drawText(debugOutput, 0, fpsPaint.getTextSize(), fpsPaint);
                         }
                     }
                 }
