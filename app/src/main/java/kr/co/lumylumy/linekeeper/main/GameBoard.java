@@ -141,6 +141,9 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
     void init(){
         //Tile initialize.
         Tile.tileInitialze(tileSize);
+        //test.
+        Tile.viewTileProbability(0);
+        Tile.viewTileProbability(MAXLEVEL_DEFAULT);
         //
         setTileCyclePanel();
         setControlPanel();

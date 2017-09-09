@@ -35,6 +35,7 @@ DEV.
     make image of tile.
         이미지를 resource폴더에 넣어두고 로드하기.
         --->이미지가 apk에서 바로 보이지 않도록 간단한 변환을 한 뒤 저장, 불러올때 변환 제거하고 Bitmap으로 변환.
+    put backgroundMusic and sound effect.
     GameBoard - 이후 계속 개발.
 DEBUG.
     ?
@@ -169,5 +170,8 @@ public class GameMain implements TimerAble, TouchEvent, MainActivity.BackKeyRece
         drawView.viewUpdate();
         timer.start();
     }
-    public void activityDestroy(){ timer.stop(); }
+    public void activityDestroy(){
+        timer.stop();
+        gamePlay.saveScore();
+    }
 }
