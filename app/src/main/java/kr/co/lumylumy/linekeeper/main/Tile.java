@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.Shader;
 
@@ -49,6 +50,10 @@ interface TileAllocator{
     int P_DCURVE = PROBABILITY_DEFAULT / 3;
     int P_DCURVE_MUST_LOW = PROBABILITY_DEFAULT / 10;
     int P_DCURVE_MUST_HIGH = PROBABILITY_DEFAULT / 5;
+
+    int P_CROSS = PROBABILITY_DEFAULT / 3;
+    int P_CROSS_MUST_LOW = PROBABILITY_DEFAULT / 10;
+    int P_CROSS_MUST_HIGH = PROBABILITY_DEFAULT / 5;
 
     //
     int getProbability(int level);
@@ -116,6 +121,9 @@ abstract class Tile implements TimerAble {
 
         int DCURVE = SCORE_DEFAULT * 5;
         int DCURVE_MUST = SCORE_DEFAULT * 10;
+
+        int CROSS = SCORE_DEFAULT * 6;
+        int CROSS_MUST = SCORE_DEFAULT * 12;
     }
 
     //constructor.
@@ -307,6 +315,8 @@ abstract class Tile implements TimerAble {
         Tile_TRIPLE_MUST.makeTileBitmap();
         Tile_DCURVE.makeTileBitmap();
         Tile_DCURVE_MUST.makeTileBitmap();
+        Tile_CROSS.makeTileBitmap();
+        Tile_CROSS_MUST.makeTileBitmap();
         TileA.makeTileBitmap();
         TileB.makeTileBitmap();
         //TileAllocatorTable.
@@ -321,6 +331,8 @@ abstract class Tile implements TimerAble {
                 Tile_TRIPLE_MUST.getTileAllocator(),
                 Tile_DCURVE.getTileAllocator(),
                 Tile_DCURVE_MUST.getTileAllocator(),
+                Tile_CROSS.getTileAllocator(),
+                Tile_CROSS_MUST.getTileAllocator(),
         };
     }
 
@@ -1071,6 +1083,193 @@ class Tile_DCURVE_MUST extends Tile_DCURVE{
             public int getProbability(int level) { return linearMaxLevel(level, P_DCURVE_MUST_LOW, P_DCURVE_MUST_HIGH, GameBoard.MAXLEVEL_DEFAULT); }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_DCURVE_MUST(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_CROSS extends Tile{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    static int[] tilePos_Cross = new int[6];
+    Tile_CROSS(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){ super(tileUpdateClass, direction, pos); }
+    @Override
+    void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
+        if (!isProcessing){
+            Paint paint = Tools.colorPaint(COLOR_LINE, true);
+            if (isConnectAll()){
+                canvas.drawRect(
+                        pos.getX() - tileSize_2, pos.getY() - tileSize_2,
+                        pos.getX() + tileSize_2, pos.getY() + tileSize_2, paint
+                );
+            }
+            else {
+                switch(tileDirection.get()){
+                    case Direction.U:
+                    case Direction.D:
+                        if (lineU){
+                            canvas.drawRect(Tools.rectWH(pos.getX() - lineWidth / 2, pos.getY() - tileSize_2, lineWidth, tilePos_Cross[1]), paint);
+                            canvas.drawRect(Tools.rectWH(pos.getX() - lineWidth / 2, pos.getY() - tileSize_2 + tilePos_Cross[4], lineWidth, tilePos_Cross[1]), paint);
+                        }
+                        else if(lineR){
+                            canvas.drawRect(Tools.rectWH(pos.getX() - tileSize_2, pos.getY() - lineWidth / 2, tilePos1, lineWidth), paint);
+                            canvas.drawRect(Tools.rectWH(pos.getX() - tileSize_2 + tilePos2, pos.getY() - lineWidth / 2, tilePos1, lineWidth), paint);
+                            canvas.drawRect(Tools.rectWH(pos.getX() - lineWidth / 2, pos.getY() - tileSize_2 + tilePos_Cross[2], lineWidth, lineWidth / 2), paint);
+                        }
+                        break;
+                    default:
+                        if (lineU){
+                            canvas.drawRect(Tools.rectWH(pos.getX() - lineWidth / 2, pos.getY() - tileSize_2, lineWidth, tilePos1), paint);
+                            canvas.drawRect(Tools.rectWH(pos.getX() - lineWidth / 2, pos.getY() - tileSize_2 + tilePos2, lineWidth, tilePos1), paint);
+                            canvas.drawRect(Tools.rectWH(pos.getX() - tileSize_2 + tilePos_Cross[2], pos.getY() - lineWidth / 2, lineWidth / 2, lineWidth), paint);
+                        }
+                        else if(lineR){
+                            canvas.drawRect(Tools.rectWH(pos.getX() - tileSize_2, pos.getY() - lineWidth / 2, tilePos_Cross[1], lineWidth), paint);
+                            canvas.drawRect(Tools.rectWH(pos.getX() - tileSize_2 + tilePos_Cross[4], pos.getY() - lineWidth / 2, tilePos_Cross[1], lineWidth), paint);
+                        }
+                        break;
+                }
+            }
+        }
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    Direction[] lineFlow(Direction di) {//line flow process. if line is start to flow by this, it will return direction.
+        if (!isProcessing){
+            switch (di.get()) {
+                case Direction.R:
+                    if (!lineR) {
+                        lineR = lineL = true;
+                        return new Direction[]{new Direction(Direction.L)};
+                    }
+                    break;
+                case Direction.U:
+                    if (!lineU) {
+                        lineU = lineD = true;
+                        return new Direction[]{new Direction(Direction.D)};
+                    }
+                    break;
+                case Direction.L:
+                    if (!lineL) {
+                        lineL = lineR = true;
+                        return new Direction[]{new Direction(Direction.R)};
+                    }
+                    break;
+                case Direction.D:
+                    if (!lineD) {
+                        lineD = lineU = true;
+                        return new Direction[]{new Direction(Direction.U)};
+                    }
+                    break;
+            }
+        }
+        return new Direction[0];
+    }
+    @Override
+    boolean isLine(Direction di) {//check whether line exist tile's direction.
+        return true;
+    }
+    @Override
+    boolean isConnectAll() {//check whether tile's every line is connected.
+        return lineR && lineU;
+    }
+    @Override
+    int connectScore() {//return score.
+        if (isConnectAll()){
+            return ScoreValue.CROSS;
+        }
+        if (lineR || lineU){
+            return ScoreValue.CROSS / 2;
+        }
+        return 0;
+    }
+    static void makeTileBitmap(){
+        bitmap_S = makeRotateBitmap(makeCrossBitmap(COLOR1));//save it to bitmap_S.
+    }
+    static Bitmap makeCrossBitmap(int color){
+        tilePos_Cross[0] = tileSize_2 - lineWidth * 3 / 4;
+        tilePos_Cross[1] = tileSize_2 - lineWidth * 3 / 8;
+        tilePos_Cross[2] = tileSize_2 - lineWidth / 4;
+        tilePos_Cross[3] = tileSize_2 + lineWidth / 4;
+        tilePos_Cross[4] = tileSize_2 + lineWidth * 3 / 8;
+        tilePos_Cross[5] = tileSize_2 + lineWidth * 3 / 4;
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        //draw tile bitmap (Direction U)
+        Tools.resetBitmap(canvas, color);
+        Paint paint = Tools.colorPaint(0, true);
+        Path path = new Path();
+        path.moveTo(0, tilePos1);
+        path.lineTo(tilePos_Cross[0], tilePos1);
+        path.lineTo(tilePos1, tilePos_Cross[2]);
+        path.lineTo(tilePos2, tilePos_Cross[2]);
+        path.lineTo(tilePos_Cross[5], tilePos1);
+        path.lineTo(tileSize, tilePos1);
+        path.lineTo(tileSize, tilePos2);
+        path.lineTo(tilePos_Cross[5], tilePos2);
+        path.lineTo(tilePos2, tilePos_Cross[3]);
+        path.lineTo(tilePos1, tilePos_Cross[3]);
+        path.lineTo(tilePos_Cross[0], tilePos2);
+        path.lineTo(0, tilePos2);
+        path.close();
+        canvas.drawPath(path, paint);
+        path.reset();
+        path.moveTo(tilePos1, 0);
+        path.lineTo(tilePos1, tilePos_Cross[0]);
+        path.lineTo(tilePos_Cross[2], tilePos1);
+        path.lineTo(tilePos_Cross[2], tilePos_Cross[1]);
+        path.lineTo(tilePos_Cross[3], tilePos_Cross[1]);
+        path.lineTo(tilePos_Cross[3], tilePos1);
+        path.lineTo(tilePos2, tilePos_Cross[0]);
+        path.lineTo(tilePos2, 0);
+        path.close();
+        canvas.drawPath(path, paint);
+        path.reset();
+        path.moveTo(tilePos1, tileSize);
+        path.lineTo(tilePos1, tilePos_Cross[5]);
+        path.lineTo(tilePos_Cross[2], tilePos2);
+        path.lineTo(tilePos_Cross[2], tilePos_Cross[4]);
+        path.lineTo(tilePos_Cross[3], tilePos_Cross[4]);
+        path.lineTo(tilePos_Cross[3], tilePos2);
+        path.lineTo(tilePos2, tilePos_Cross[5]);
+        path.lineTo(tilePos2, tileSize);
+        path.close();
+        canvas.drawPath(path, paint);
+        return tileBitmap;
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TileAllocator(){
+            @Override
+            public int getProbability(int level) { return P_CROSS; }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_CROSS(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_CROSS_MUST extends Tile_CROSS{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_CROSS_MUST(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){//constructor.
+        super(tileUpdateClass, direction, pos);
+        mustConnect = true;
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    int connectScore() {//return score.
+        if (isConnectAll()){
+            return ScoreValue.CROSS_MUST;
+        }
+        return 0;
+    }
+    static void makeTileBitmap(){
+        bitmap_S = makeRotateBitmap(makeCrossBitmap(COLOR2));//save it to bitmap_S.
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TA_LinearProbability(){
+            @Override
+            public int getProbability(int level) { return linearMaxLevel(level, P_CROSS_MUST_LOW, P_CROSS_MUST_HIGH, GameBoard.MAXLEVEL_DEFAULT); }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_CROSS_MUST(tileUpdateClass, direction, pos); }
         };
     }
 }
