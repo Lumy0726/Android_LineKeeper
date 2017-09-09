@@ -97,6 +97,7 @@ class GamePlay implements GameBase{
         gameMain.drawView.update();
         if (gameBoard.isDie){
             state = STATE_DIE;
+            saveScore();
             Tools.simpleToast("Game Over");
             gameMain.setGameState(GameMain.GSTATE_PAUSE);
         }
