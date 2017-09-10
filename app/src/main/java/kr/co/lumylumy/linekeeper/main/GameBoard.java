@@ -6,8 +6,10 @@ import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
+import android.graphics.SweepGradient;
 import android.view.MotionEvent;
 
 import java.util.ArrayList;
@@ -48,8 +50,10 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
     Rect[] rect_Cycle = new Rect[4];
     //Control Bitmap, rect.
     Bitmap b_Control;
-    static final int CONTROL_NUM = 6, CONTROL_ROTATEL = 0, CONTROL_ROTATER = 1, CONTROL_R = 2, CONTROL_U = 3, CONTROL_L = 4, CONTROL_D = 5;
+    static final int CONTROL_NUM = 7, CONTROL_ROTATEL = 0, CONTROL_ROTATER = 1, CONTROL_R = 2, CONTROL_U = 3, CONTROL_L = 4, CONTROL_D = 5, CONTROL_MOVECURSOR = 6;
     Rect[] rect_Control = new Rect[CONTROL_NUM];
+    boolean moveCursorState = false;
+    int moveCursorButtonId;
     //other Bitmap.
     Bitmap b_Cursor;
     //touchInput.
@@ -110,6 +114,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         (rect_Control[CONTROL_L] = new Rect(rect)).offsetTo(outputWidth - tileSize * 3, tileSize);
         (rect_Control[CONTROL_D] = new Rect(rect)).offsetTo(outputWidth - tileSize * 2, tileSize);
         (rect_Control[CONTROL_R] = new Rect(rect)).offsetTo(outputWidth - tileSize, tileSize);
+        (rect_Control[CONTROL_MOVECURSOR] = new Rect(rect)).offsetTo(outputWidth - tileSize * 5, tileSize);
         Canvas canvas = new Canvas();
         Matrix matrix = new Matrix();
         b_Control = Bitmap.createBitmap(outputWidth, controlPanelHeight, Bitmap.Config.ARGB_8888);
@@ -133,10 +138,22 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_D], null);
         matrix.setRotate(90);
         canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_R], null);
-        canvas.drawBitmap(Bitmap.createBitmap(bitmap_Arrow, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_R], null);
         canvas.drawBitmap(bitmap_Rotate, null, rect_Control[CONTROL_ROTATEL], null);
         matrix.setScale(-1, 1);
         canvas.drawBitmap(Bitmap.createBitmap(bitmap_Rotate, 0, 0, tileSize, tileSize, matrix, false), null, rect_Control[CONTROL_ROTATER], null);
+        //
+        Bitmap b_MoveCursor = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Paint paint = new Paint();
+        int colorRes = 100;
+        int[] colors = new int[colorRes];
+        float[] positions = new float[colorRes];
+        for (int loop1 = 0; loop1 < colorRes; loop1++){
+            colors[loop1] = MyColor.hsvColor(360 * loop1 / colorRes, 50, 100);
+            positions[loop1] = loop1 / (float)colorRes;
+        }
+        paint.setShader(new SweepGradient(tileSize / 2, tileSize / 2, colors, positions));
+        Tools.newCanvas(b_MoveCursor).drawCircle(tileSize / 2, tileSize / 2, tileSize / 2, paint);
+        canvas.drawBitmap(b_MoveCursor, null, rect_Control[CONTROL_MOVECURSOR], null);
     }
     void init(){
         //Tile initialize.
@@ -374,10 +391,9 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         Iterator<TouchInfo> it;
         boolean flag;
         Coord touchTilePos = new Coord(cursorTilePos);
-        Tile tile, tile2;
+        Tile tile;
         //sweepLine touch.
-        float sl_TouchY = (touchInfo.y > tileSize) ? (touchInfo.y - tileSize) : (touchInfo.y + (BOARDH - 1) * tileSize);
-        sl_TouchY = touchInfo.y;
+        float sl_TouchY = touchInfo.y;
         if (sl_TouchY > 0){
             if (touchInfo.y < tileSize){
                 sl_TouchY += (BOARDH - 1) * tileSize;
@@ -386,6 +402,7 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
         }
         if (sweepLine.touchInput(new TouchInfo(touchInfo.x, sl_TouchY, touchInfo.id, touchInfo.action))) {
             //game over.
+            isDie = true;
         }
         else {
             if (sweepLine.getLastProcessLineNumber() > 0) {
@@ -398,39 +415,13 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
             case TouchInfo.DOWN:
                 touchInput.add(touchInfo);
                 touchTilePos.setPos((int) touchInfo.x / tileSize, (int) touchInfo.y / tileSize);
-                if (touchTilePos.isOut()){//not select tile - touch control button
-                    if (!cursorTilePos.isOut()){//able to process control button.
-                        Direction di = null, diM;
-                        Coord obPos;
-                        tile = getTileToCursor(cursorTilePos);
-                        int x = (int) touchInfo.x, y = (int) touchInfo.y - tileOutputHeight;
-                        if (rect_Control[CONTROL_ROTATEL].contains(x, y)){
-                            if (tile.processAble(Tile.P_ROTATE_L)) tile.startProcess(Tile.P_ROTATE_L);
-                        }
-                        else if (rect_Control[CONTROL_ROTATER].contains(x, y)){
-                            if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_R);
-                        }
-                        else if (rect_Control[CONTROL_R].contains(x, y)){ di = new Direction(Direction.R); }
-                        else if (rect_Control[CONTROL_L].contains(x, y)){ di = new Direction(Direction.L); }
-                        else if (rect_Control[CONTROL_U].contains(x, y)){ di = new Direction(Direction.U); }
-                        else if (rect_Control[CONTROL_D].contains(x, y)){ di = new Direction(Direction.D); }
-                        if (di != null) {
-                            obPos = new Coord(cursorTilePos);
-                            if (di.get() == Direction.U && obPos.getY() == 0) obPos.setPosY(BOARDH);
-                            if (di.get() == Direction.D && obPos.getY() == BOARDH) obPos.setPosY(0);
-                            obPos.move(di);
-                            if (!obPos.isOut()) {
-                                diM = new Direction(di);
-                                diM.mirror();
-                                tile2 = getTileToCursor(obPos);
-                                if (tile.processAble(di) && tile2.processAble(diM)) {
-                                    tileSwapToCursor(cursorTilePos, obPos);
-                                    tile.startProcess(di);
-                                    tile2.startProcess(diM);
-                                    cursorTilePos = obPos;
-                                }
-                            }
-                        }
+                if (touchTilePos.isOut()){//not select tile.
+                    //processing touch control button.
+                    int x = (int)touchInfo.x, y = (int)touchInfo.y - tileOutputHeight;
+                    controlButtonTouchDown(x, y);
+                    if (!moveCursorState && rect_Control[CONTROL_MOVECURSOR].contains(x, y)){
+                        moveCursorButtonId = touchInfo.id;
+                        moveCursorState = true;
                     }
                 }
                 else {//select tile
@@ -459,13 +450,59 @@ class GameBoard implements TimerAble, TouchEvent, TileUpdateReceiver {
                 }
                 if (flag){
                     //process touch out.
+                    if (moveCursorState && t_Info.id == moveCursorButtonId){ moveCursorState = false; }
                 }
                 break;
             case TouchInfo.CANCEL:
                 touchInput.clear();
+                moveCursorState = false;
                 break;
         }
         return true;
+    }
+    void controlButtonTouchDown(int x, int y){
+        if (!cursorTilePos.isOut()){//able to process control button.
+            Direction di = null, diM;
+            Coord obPos;
+            Tile tile, tile2;
+            tile = getTileToCursor(cursorTilePos);
+            if (rect_Control[CONTROL_ROTATEL].contains(x, y)){
+                if (tile.processAble(Tile.P_ROTATE_L)) tile.startProcess(Tile.P_ROTATE_L);
+            }
+            else if (rect_Control[CONTROL_ROTATER].contains(x, y)){
+                if (tile.processAble(Tile.P_ROTATE_R)) tile.startProcess(Tile.P_ROTATE_R);
+            }
+            else if (rect_Control[CONTROL_R].contains(x, y)){ di = new Direction(Direction.R); }
+            else if (rect_Control[CONTROL_L].contains(x, y)){ di = new Direction(Direction.L); }
+            else if (rect_Control[CONTROL_U].contains(x, y)){ di = new Direction(Direction.U); }
+            else if (rect_Control[CONTROL_D].contains(x, y)){ di = new Direction(Direction.D); }
+            if (di != null) {
+                obPos = new Coord(cursorTilePos);
+                if (di.get() == Direction.U && obPos.getY() == 0) obPos.setPosY(BOARDH);
+                if (di.get() == Direction.D && obPos.getY() == BOARDH) obPos.setPosY(0);
+                if (moveCursorState){
+                    //cursor move.
+                    obPos.setMode(Coord.MODE_CYCLE);
+                    obPos.move(di);
+                    cursorTilePos.setPos(obPos.getX(), obPos.getY());
+                }
+                else {
+                    //tile move.
+                    obPos.move(di);
+                    if (!obPos.isOut()) {
+                        diM = new Direction(di);
+                        diM.mirror();
+                        tile2 = getTileToCursor(obPos);
+                        if (tile.processAble(di) && tile2.processAble(diM)) {
+                            tileSwapToCursor(cursorTilePos, obPos);
+                            tile.startProcess(di);
+                            tile2.startProcess(diM);
+                            cursorTilePos = obPos;
+                        }
+                    }
+                }
+            }
+        }
     }
     @Override
     public void tileUpdate() { needLineUpdate = true; }
