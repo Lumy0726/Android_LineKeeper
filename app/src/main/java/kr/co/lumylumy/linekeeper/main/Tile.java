@@ -55,6 +55,10 @@ interface TileAllocator{
     int P_CROSS_MUST_LOW = PROBABILITY_DEFAULT / 10;
     int P_CROSS_MUST_HIGH = PROBABILITY_DEFAULT / 5;
 
+    int P_DESTROYER = PROBABILITY_DEFAULT / 5;
+    int P_DESTROYER_MUST_LOW = PROBABILITY_DEFAULT / 10;
+    int P_DESTROYER_MUST_HIGH = PROBABILITY_DEFAULT / 5;
+
     //
     int getProbability(int level);
     Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos);
@@ -124,6 +128,8 @@ abstract class Tile implements TimerAble {
 
         int CROSS = SCORE_DEFAULT * 6;
         int CROSS_MUST = SCORE_DEFAULT * 12;
+
+        int DESTROYER = SCORE_DEFAULT;
     }
 
     //constructor.
@@ -317,6 +323,8 @@ abstract class Tile implements TimerAble {
         Tile_DCURVE_MUST.makeTileBitmap();
         Tile_CROSS.makeTileBitmap();
         Tile_CROSS_MUST.makeTileBitmap();
+        Tile_DESTROYER.makeTileBitmap();
+        Tile_DESTROYER_MUST.makeTileBitmap();
         TileA.makeTileBitmap();
         TileB.makeTileBitmap();
         //TileAllocatorTable.
@@ -333,6 +341,8 @@ abstract class Tile implements TimerAble {
                 Tile_DCURVE_MUST.getTileAllocator(),
                 Tile_CROSS.getTileAllocator(),
                 Tile_CROSS_MUST.getTileAllocator(),
+                Tile_DESTROYER.getTileAllocator(),
+                Tile_DESTROYER_MUST.getTileAllocator(),
         };
     }
 
@@ -400,7 +410,6 @@ class Tile_EX extends Tile{
     @Override
     void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
         if (!isProcessing && isConnectAll()){//for dual line, need more checking about isConnect.
-            int tileSize_2 = tileSize / 2;
             canvas.drawRect(
                     pos.getX() - tileSize_2, pos.getY() - tileSize_2,
                     pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(MyColor.BLUE, true)
@@ -431,6 +440,7 @@ class Tile_EX extends Tile{
     }
     static void makeTileBitmap(){
         Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
         //draw tile bitmap (Direction U)
         bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
     }
@@ -1270,6 +1280,103 @@ class Tile_CROSS_MUST extends Tile_CROSS{
             public int getProbability(int level) { return linearMaxLevel(level, P_CROSS_MUST_LOW, P_CROSS_MUST_HIGH, GameBoard.MAXLEVEL_DEFAULT); }
             @Override
             public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_CROSS_MUST(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_DESTROYER extends Tile{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_DESTROYER(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){//constructor.
+        super(tileUpdateClass, direction, pos);
+    }
+    @Override
+    void drawLine(Canvas canvas) {//if the line is flow, draw the line (it will be covered by tile's bitmap).
+        if (!isProcessing && isConnectAll()){//for dual line, need more checking about isConnect.
+            canvas.drawRect(
+                    pos.getX() - tileSize_2, pos.getY() - tileSize_2,
+                    pos.getX() + tileSize_2, pos.getY() + tileSize_2, Tools.colorPaint(MyColor.BLUE, true)
+            );
+        }
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    @Override
+    Direction[] lineFlow(Direction di) {//line flow process. if line is start to flow by this, it will return direction.
+        if (!isProcessing){
+            switch(tileDirection.get()){
+                case Direction.R: lineR = true; break;
+                case Direction.U: lineU = true; break;
+                case Direction.L: lineL = true; break;
+                case Direction.D: lineD = true; break;
+            }
+        }
+        return new Direction[0];
+    }
+    @Override
+    boolean isLine(Direction di) {//check whether line exist tile's direction.
+        return tileDirection.equals(di);
+    }
+    @Override
+    boolean isConnectAll() {//check whether tile's every line is connected.
+        switch(tileDirection.get()){
+            case Direction.R:
+                return lineR;
+            case Direction.U:
+                return lineU;
+            case Direction.L:
+                return lineL;
+            case Direction.D:
+                return lineD;
+        }
+        return false;
+    }
+    @Override
+    int connectScore() {//return score.
+        if (isConnectAll()){
+            return ScoreValue.DESTROYER;
+        }
+        return 0;
+    }
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        Tools.resetBitmap(canvas, COLOR1);
+        canvas.drawRect(tileSize_2 - lineWidth / 2, 0, tileSize_2 + lineWidth / 2, tileSize_2, Tools.colorPaint(0, true));
+        canvas.drawCircle(tileSize_2, tileSize_2, lineWidth, Tools.colorPaint(0, true));
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TileAllocator(){
+            @Override
+            public int getProbability(int level) { return P_DESTROYER; }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_DESTROYER(tileUpdateClass, direction, pos); }
+        };
+    }
+}
+class Tile_DESTROYER_MUST extends Tile_DESTROYER{
+    //Bitmap.
+    static Bitmap[] bitmap_S;//save tile's bitmap with rotation.
+    Tile_DESTROYER_MUST(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos){//constructor.
+        super(tileUpdateClass, direction, pos);
+        mustConnect = true;
+    }
+    @Override
+    Bitmap[] getRotateBitmap() { return bitmap_S; }//give rotate bitmap to Tile's instance value.
+    static void makeTileBitmap(){
+        Bitmap tileBitmap = Bitmap.createBitmap(tileSize, tileSize, Bitmap.Config.ARGB_8888);
+        Canvas canvas = Tools.newCanvas(tileBitmap);
+        Tools.resetBitmap(canvas, COLOR2);
+        canvas.drawRect(tileSize_2 - lineWidth / 2, 0, tileSize_2 + lineWidth / 2, tileSize_2, Tools.colorPaint(0, true));
+        canvas.drawCircle(tileSize_2, tileSize_2, lineWidth, Tools.colorPaint(0, true));
+        bitmap_S = makeRotateBitmap(tileBitmap);//save it to bitmap_S.
+    }
+    static TileAllocator getTileAllocator(){//return TileAllocator interface.
+        return new TA_LinearProbability(){
+            @Override
+            public int getProbability(int level) { return linearMaxLevel(level, P_DESTROYER_MUST_LOW, P_DESTROYER_MUST_HIGH, GameBoard.MAXLEVEL_DEFAULT); }
+            @Override
+            public Tile newTile(TileUpdateReceiver tileUpdateClass, Direction direction, Coord pos) { return new Tile_DESTROYER_MUST(tileUpdateClass, direction, pos); }
         };
     }
 }

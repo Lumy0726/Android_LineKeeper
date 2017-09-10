@@ -28,7 +28,6 @@ import kr.co.lumylumy.linekeeper.view.SurfaceDrawView.TouchEvent;
 /*
 ---Job List---
 DEV.
-    make many type of tile (extends Tile Class).
     메인메뉴에 설정 관련 추가하기.
 
     make image of tile.
